@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PLACEHOLDER Daily Brief banner for PDF export (Phase 2).
+  Replace with the Outlook template header graphic, or the new Nippo-on-navy
+  banner once designed per the 2024 brand guidelines.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120" role="img" aria-label="Daily Brief banner">
+  <rect width="800" height="120" fill="#19223D"/>
+  <rect width="800" height="8" y="112" fill="#EF3E33"/>
+  <text x="40" y="72" font-family="Archivo Black, Arial Black, sans-serif"
+        font-size="42" font-weight="900" fill="#FFFFFF" letter-spacing="1">DAILY BRIEF</text>
+  <circle cx="720" cy="60" r="36" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.5"/>
+  <text x="720" y="67" font-family="Archivo Black, sans-serif" font-size="18"
+        font-weight="900" text-anchor="middle" fill="#FFFFFF" opacity="0.7">BWFC</text>
+</svg>

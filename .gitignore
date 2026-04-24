@@ -1,0 +1,32 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Composer
+/vendor/
+composer.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+/logs/
+*.log
+
+# Local caches
+/cache/
+/tmp/
+
+# PDF exports (generated at runtime)
+/public/exports/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

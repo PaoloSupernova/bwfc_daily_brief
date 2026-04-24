@@ -1,0 +1,246 @@
+<?php
+declare(strict_types=1);
+
+namespace BWFC\DailyBrief;
+
+use DOMDocument;
+use DOMXPath;
+use RuntimeException;
+
+/**
+ * Fetches an article from a URL and extracts readable content.
+ *
+ * Strategy: cURL the HTML, strip scripts/styles/nav, extract from <article>,
+ * <main>, or heuristically from the densest text block. Returns headline,
+ * content, and detected outlet.
+ */
+final class ArticleFetcher
+{
+    /**
+     * @return array{success: bool, headline: string, content: string, outlet: string, domain: string, error: ?string, paywalled: bool}
+     */
+    public function fetch(string $url): array
+    {
+        $url = trim($url);
+        $domain = $this->extractDomain($url);
+
+        $outlet = $this->detectOutlet($domain);
+        $paywalled = $this->isPaywalled($domain);
+
+        $base = [
+            'headline' => '',
+            'content' => '',
+            'outlet' => $outlet,
+            'domain' => $domain,
+            'paywalled' => $paywalled,
+        ];
+
+        try {
+            $html = $this->downloadHtml($url);
+            if ($html === '') {
+                return array_merge($base, ['success' => false, 'error' => 'Empty response from URL']);
+            }
+
+            $headline = $this->extractHeadline($html);
+            $content = $this->extractContent($html);
+
+            if ($content === '' || strlen($content) < 100) {
+                return array_merge($base, [
+                    'success' => false,
+                    'headline' => $headline,
+                    'error' => 'Article content could not be extracted automatically. Use the paste fallback.',
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'headline' => $headline,
+                'content' => $content,
+                'outlet' => $outlet,
+                'domain' => $domain,
+                'paywalled' => $paywalled,
+                'error' => null,
+            ];
+        } catch (RuntimeException $e) {
+            return array_merge($base, ['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function downloadHtml(string $url): string
+    {
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            throw new RuntimeException('Invalid URL');
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_TIMEOUT => (int)env('FETCH_TIMEOUT', 10),
+            CURLOPT_USERAGENT => (string)env('FETCH_USER_AGENT', 'Mozilla/5.0 (compatible; BWFC-DailyBrief/1.0)'),
+            CURLOPT_HTTPHEADER => [
+                'Accept: text/html,application/xhtml+xml',
+                'Accept-Language: en-GB,en;q=0.9',
+            ],
+            CURLOPT_SSL_VERIFYPEER => false, // XAMPP often lacks CA bundle
+        ]);
+
+        $body = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        if ($body === false) {
+            throw new RuntimeException('Fetch failed: ' . $err);
+        }
+
+        if ($code >= 400) {
+            throw new RuntimeException("HTTP {$code} returned (site may block scrapers or require login)");
+        }
+
+        return (string)$body;
+    }
+
+    private function extractDomain(string $url): string
+    {
+        $host = parse_url($url, PHP_URL_HOST) ?: '';
+        return strtolower(preg_replace('/^www\./', '', $host));
+    }
+
+    private function detectOutlet(string $domain): string
+    {
+        if ($domain === '') {
+            return 'Unknown';
+        }
+
+        // Exact match
+        $row = Database::selectOne(
+            'SELECT display_name FROM outlets WHERE domain = :domain LIMIT 1',
+            ['domain' => $domain]
+        );
+        if ($row !== null) {
+            return (string)$row['display_name'];
+        }
+
+        // Try stripping subdomains one at a time (e.g. sport.bbc.co.uk → bbc.co.uk)
+        $parts = explode('.', $domain);
+        while (count($parts) > 2) {
+            array_shift($parts);
+            $candidate = implode('.', $parts);
+            $row = Database::selectOne(
+                'SELECT display_name FROM outlets WHERE domain = :domain LIMIT 1',
+                ['domain' => $candidate]
+            );
+            if ($row !== null) {
+                return (string)$row['display_name'];
+            }
+        }
+
+        // Fall back to domain as-is
+        return $domain;
+    }
+
+    private function isPaywalled(string $domain): bool
+    {
+        $row = Database::selectOne(
+            'SELECT is_paywalled FROM outlets WHERE domain = :domain LIMIT 1',
+            ['domain' => $domain]
+        );
+        return $row !== null && (int)$row['is_paywalled'] === 1;
+    }
+
+    private function extractHeadline(string $html): string
+    {
+        // Prefer Open Graph title
+        if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
+            return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        // Then Twitter card
+        if (preg_match('/<meta[^>]+name=["\']twitter:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
+            return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        // Then <title>
+        if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m)) {
+            return trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        }
+
+        return '';
+    }
+
+    private function extractContent(string $html): string
+    {
+        // Strip script, style, noscript, nav, footer, aside
+        $stripped = preg_replace(
+            '/<(script|style|noscript|nav|footer|aside|form|iframe)\b[^>]*>.*?<\/\1>/is',
+            ' ',
+            $html
+        );
+
+        if ($stripped === null) {
+            return '';
+        }
+
+        libxml_use_internal_errors(true);
+        $dom = new DOMDocument();
+        if (!$dom->loadHTML('<?xml encoding="UTF-8">' . $stripped)) {
+            libxml_clear_errors();
+            return '';
+        }
+        libxml_clear_errors();
+
+        $xpath = new DOMXPath($dom);
+
+        // Try common article containers in order
+        $candidates = [
+            '//article',
+            '//main',
+            '//*[@role="main"]',
+            '//*[contains(@class,"article-body")]',
+            '//*[contains(@class,"story-body")]',
+            '//*[contains(@class,"entry-content")]',
+            '//*[contains(@class,"post-content")]',
+            '//*[contains(@itemprop,"articleBody")]',
+        ];
+
+        foreach ($candidates as $query) {
+            $nodes = $xpath->query($query);
+            if ($nodes === false || $nodes->length === 0) {
+                continue;
+            }
+            $text = '';
+            foreach ($nodes as $node) {
+                $text .= ' ' . ($node->textContent ?? '');
+            }
+            $clean = $this->cleanText($text);
+            if (strlen($clean) > 200) {
+                return $clean;
+            }
+        }
+
+        // Last resort: collect all <p> tags
+        $paragraphs = $xpath->query('//p');
+        if ($paragraphs !== false && $paragraphs->length > 0) {
+            $text = '';
+            foreach ($paragraphs as $p) {
+                $t = trim($p->textContent ?? '');
+                if (strlen($t) > 40) {
+                    $text .= $t . "\n\n";
+                }
+            }
+            return $this->cleanText($text);
+        }
+
+        return '';
+    }
+
+    private function cleanText(string $text): string
+    {
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+        $text = preg_replace('/\s*\n\s*/', "\n", $text) ?? $text;
+        return trim($text);
+    }
+}

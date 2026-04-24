@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PLACEHOLDER BWFC marque for the Daily Brief header.
+  Replace this file with the approved BWFC marque SVG from the brand asset library.
+  See: 2024 Brand Guidelines, page 3 ("Logo Variations").
+  The marque consists of a circular emblem with Lancashire rose, ribbon,
+  and established date 1877. Do not redraw, reproportion, or recolour.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="Bolton Wanderers placeholder">
+  <rect width="80" height="80" rx="8" fill="#FFFFFF"/>
+  <circle cx="40" cy="36" r="24" fill="none" stroke="#003976" stroke-width="3"/>
+  <text x="40" y="43" font-family="Archivo Black, Arial Black, sans-serif"
+        font-size="16" font-weight="900" text-anchor="middle" fill="#003976"
+        letter-spacing="-0.5">BWFC</text>
+  <path d="M 12 66 L 40 58 L 68 66 L 60 72 L 40 66 L 20 72 Z" fill="#EF3E33"/>
+  <circle cx="40" cy="66" r="4" fill="#FFFFFF" stroke="#19223D" stroke-width="1"/>
+  <text x="40" y="68.5" font-family="Arial, sans-serif" font-size="4" font-weight="bold"
+        text-anchor="middle" fill="#19223D">1877</text>
+</svg>
