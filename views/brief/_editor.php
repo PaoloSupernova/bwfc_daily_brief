@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Shared editor view - used by new.php and edit.php.
- * Variables expected in scope: $brief (array), $articles (array), $sections (array), $isLocked (bool)
+ * Variables in scope: $brief, $articles, $sections, $isLocked
  */
 
 $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
@@ -38,7 +38,7 @@ $jsState = [
         </div>
         <div class="editor__header-actions">
             <span class="status-pill status-pill--draft" x-show="status === 'draft'">Draft</span>
-            <span class="status-pill status-pill--sent" x-show="status === 'sent'">Sent · Locked</span>
+            <span class="status-pill status-pill--sent" x-show="status === 'sent'">Sent &middot; Locked</span>
             <span class="editor__count"><span x-text="articles.length"></span> article<span x-show="articles.length !== 1">s</span></span>
         </div>
     </header>
@@ -61,7 +61,6 @@ $jsState = [
             </button>
         </div>
 
-        <!-- Paywall / extraction failure fallback -->
         <div class="fallback-panel" x-show="showFallback" x-cloak>
             <div class="fallback-panel__banner">
                 <strong>Manual paste required.</strong>
@@ -91,12 +90,9 @@ $jsState = [
             </div>
         </div>
 
-        <!-- Pending review panel -->
         <div class="review-panel" x-show="showReview" x-cloak>
             <div class="review-panel__meta">
-                <div class="review-panel__outlet">
-                    <strong x-text="pending.outlet"></strong>
-                </div>
+                <div class="review-panel__outlet"><strong x-text="pending.outlet"></strong></div>
                 <div class="review-panel__headline" x-text="pending.headline"></div>
                 <a class="review-panel__link" x-show="pending.url" :href="pending.url" target="_blank" rel="noopener" x-text="pending.url"></a>
             </div>
@@ -114,7 +110,7 @@ $jsState = [
             <div class="field">
                 <label class="field__label">
                     Summary
-                    <span class="field__label-meta" x-show="pending.edited">· Edited</span>
+                    <span class="field__label-meta" x-show="pending.edited">&middot; Edited</span>
                 </label>
                 <textarea class="textarea" rows="6" x-model="pending.summary" @input="pending.edited = true"></textarea>
                 <div class="field__actions">
@@ -128,7 +124,6 @@ $jsState = [
                 </div>
             </div>
 
-            <!-- Style violations -->
             <div class="violations" x-show="pending.violations && pending.violations.length > 0" x-cloak>
                 <div class="violations__title">Style check flagged <span x-text="pending.violations.length"></span> issue<span x-show="pending.violations.length !== 1">s</span>:</div>
                 <ul class="violations__list">
@@ -165,10 +160,10 @@ $jsState = [
         </div>
 
         <div class="article-list" x-show="articles.length > 0">
-            <template x-for="(article, idx) in groupedArticles()" :key="'group-' + idx">
+            <template x-for="(group, idx) in groupedArticles()" :key="'group-' + idx">
                 <div class="article-group">
-                    <h3 class="article-group__heading" x-text="article.sectionName"></h3>
-                    <template x-for="item in article.items" :key="item.id">
+                    <h3 class="article-group__heading" x-text="group.sectionName"></h3>
+                    <template x-for="item in group.items" :key="item.id">
                         <article class="article-card" :class="{ 'is-editing': editingArticleId === item.id }">
                             <div class="article-card__head">
                                 <div class="article-card__outlet" x-text="item.outlet"></div>
@@ -204,7 +199,7 @@ $jsState = [
 
         <div class="field" x-show="status === 'draft'">
             <textarea class="textarea textarea--tall" rows="8" x-model="executiveSummary"
-                      placeholder="Click &quot;Generate summary&quot; to have Claude draft this, or write your own."
+                      placeholder="Click 'Generate summary' to have Claude draft this, or write your own."
                       @input="executiveSummaryEdited = true"></textarea>
             <div class="field__actions">
                 <button type="button" class="btn btn--secondary"
@@ -226,32 +221,15 @@ $jsState = [
         </div>
     </section>
 
-    <!-- Output and send -->
+    <!-- Next step -->
     <section class="editor__section editor__section--output" x-show="articles.length > 0">
-        <h2 class="heading-section">Output</h2>
+        <h2 class="heading-section">Next step</h2>
+        <p class="field__hint">When you've finished adding articles, go to the review screen to reorder, make final edits, and export.</p>
 
         <div class="output-actions">
-            <button type="button" class="btn btn--secondary" @click="copyHtml()">
-                <span x-show="!copied">Copy HTML for Outlook</span>
-                <span x-show="copied">Copied to clipboard</span>
+            <button type="button" class="btn btn--primary btn--large" @click="goToReview()" :disabled="briefId === 0">
+                Review &amp; export &rarr;
             </button>
-            <button type="button" class="btn btn--secondary" @click="previewHtml()">Preview rendered HTML</button>
-            <button type="button" class="btn btn--primary"
-                    x-show="status === 'draft'"
-                    @click="markSent()"
-                    :disabled="articles.length === 0 || !executiveSummary">
-                Mark as sent
-            </button>
-        </div>
-
-        <p class="field__hint" x-show="status === 'draft' && !executiveSummary">Generate the executive summary before marking as sent.</p>
-
-        <div class="preview" x-show="previewOpen" x-cloak>
-            <div class="preview__head">
-                <span>Preview (as it will render in Outlook)</span>
-                <button type="button" class="link-btn" @click="previewOpen = false">Close</button>
-            </div>
-            <div class="preview__body" x-html="previewHtmlContent"></div>
         </div>
     </section>
 </div>

@@ -1,15 +1,13 @@
 /* ============================================================
    BWFC Daily Brief - Client application logic
-   Alpine.js component for the editor workflow
+   Alpine.js components for editor, admin, and review screens
    ============================================================ */
 
 /**
  * Build a full API URL from the base path.
- * public/ is the web root in XAMPP; api/ sits one directory up.
  */
 function apiUrl(endpoint) {
     const base = window.BWFC_BASE || '';
-    // Strip trailing /public if present (so /bwfc-daily-brief/public → /bwfc-daily-brief)
     const root = base.replace(/\/public\/?$/, '');
     return root + '/api/' + endpoint;
 }
@@ -31,20 +29,30 @@ async function apiPost(endpoint, body) {
 }
 
 /**
- * Section slug to display name lookup.
+ * GET helper returning parsed JSON.
+ */
+async function apiGet(endpoint) {
+    const res = await fetch(apiUrl(endpoint));
+    const data = await res.json().catch(() => ({ ok: false, error: 'Invalid JSON response' }));
+    if (!res.ok || !data.ok) {
+        throw new Error(data.error || ('HTTP ' + res.status));
+    }
+    return data;
+}
+
+/**
+ * Section slug to uppercase label (used by section suggest response).
  */
 const SECTION_SLUG_MAP = {
     'BWFC': 'bwfc',
     'EFL': 'efl',
+    'LOCAL_COMMUNITY': 'local_community',
     'WOMENS_GAME': 'womens_game',
     'GENERAL_FOOTBALL': 'general_football',
+    'LOCAL_BUSINESS': 'local_business',
     'OTHER_SPORT': 'other_sport',
 };
 
-/**
- * Build a fresh empty pending object. Standalone so it can be called
- * from init() and from cancel/save paths.
- */
 function emptyPending() {
     return {
         url: '',
@@ -60,13 +68,13 @@ function emptyPending() {
     };
 }
 
-/**
- * Main editor Alpine component.
- * Receives server-side state as an initial object.
- */
+/* ============================================================
+   BRIEF EDITOR (Alpine component)
+   Used on: brief/new.php, brief/edit.php (via _editor.php)
+   ============================================================ */
+
 function briefEditor(initial) {
     return {
-        // --- Server-synced state ---
         briefId: initial.briefId || 0,
         briefDate: initial.briefDate,
         status: initial.status || 'draft',
@@ -75,7 +83,6 @@ function briefEditor(initial) {
         executiveSummary: initial.executiveSummary || '',
         executiveSummaryEdited: false,
 
-        // --- Transient UI state ---
         urlInput: '',
         fetching: false,
         processing: false,
@@ -88,14 +95,10 @@ function briefEditor(initial) {
         previewOpen: false,
         previewHtmlContent: '',
 
-        // Pending article currently under review (populated in init)
         pending: {},
-
-        // Article being edited inline
         editingArticleId: null,
         editingText: '',
 
-        // --- Lifecycle ---
         init() {
             this.pending = emptyPending();
         },
@@ -113,10 +116,8 @@ function briefEditor(initial) {
             this.statusMessage = '';
         },
 
-        // --- Fetch article ---
         async fetchArticle() {
             if (!this.urlInput) return;
-
             this.fetching = true;
             this.fetchError = '';
             this.statusMessage = 'Fetching article...';
@@ -127,7 +128,6 @@ function briefEditor(initial) {
                 const data = await apiPost('fetch_article.php', { url: this.urlInput });
                 const a = data.article;
 
-                // Seed the pending object regardless of success
                 this.pending = emptyPending();
                 this.pending.url = this.urlInput;
                 this.pending.outlet = a.outlet || 'Unknown';
@@ -135,20 +135,17 @@ function briefEditor(initial) {
                 this.pending.content = a.content || '';
 
                 if (!a.success) {
-                    // Fetch failed or extraction too short: open paste fallback
                     this.fetchError = a.error || 'Could not extract article content. Paste the article body below.';
                     this.pending.was_paywall_fallback = true;
                     this.showFallback = true;
                     this.statusMessage = '';
                 } else {
-                    // Success: go straight to summary generation
                     this.statusMessage = 'Article fetched. Generating summary...';
                     await this.generateSummary(false);
                 }
             } catch (err) {
                 this.fetchError = err.message;
                 this.statusMessage = '';
-                // Open fallback so the user can still add the article manually
                 this.pending = emptyPending();
                 this.pending.url = this.urlInput;
                 this.pending.was_paywall_fallback = true;
@@ -158,7 +155,6 @@ function briefEditor(initial) {
             }
         },
 
-        // --- Generate summary ---
         async generateSummary(fromFallback) {
             if (!this.pending.headline || !this.pending.content) {
                 this.statusMessage = 'Headline and content required to generate a summary';
@@ -191,7 +187,6 @@ function briefEditor(initial) {
             }
         },
 
-        // --- Regenerate pending summary ---
         async regenerateSummary() {
             this.processing = true;
             this.statusMessage = 'Regenerating summary...';
@@ -219,7 +214,6 @@ function briefEditor(initial) {
             return s ? s.name : this.pending.suggestedSection;
         },
 
-        // --- Save article to brief ---
         async saveArticle() {
             if (!this.pending.summary || !this.pending.section_slug) {
                 this.statusMessage = 'Summary and section required';
@@ -244,7 +238,6 @@ function briefEditor(initial) {
                     was_paywall_fallback: this.pending.was_paywall_fallback,
                 });
 
-                // If the brief was just created server-side, update the URL so a refresh loads this brief
                 if (this.briefId === 0) {
                     this.briefId = data.brief_id;
                     const newUrl = window.location.pathname + '?brief=' + data.brief_id;
@@ -273,7 +266,6 @@ function briefEditor(initial) {
             }
         },
 
-        // --- Edit existing article inline ---
         startEdit(article) {
             this.editingArticleId = article.id;
             this.editingText = article.summary;
@@ -318,14 +310,12 @@ function briefEditor(initial) {
             }
         },
 
-        // --- Executive summary ---
         async generateExecutiveSummary() {
             if (this.articles.length === 0) return;
             if (this.briefId === 0) {
                 this.statusMessage = 'Add at least one article first.';
                 return;
             }
-
             this.processingExec = true;
             try {
                 const data = await apiPost('generate_executive_summary.php', { brief_id: this.briefId });
@@ -352,11 +342,15 @@ function briefEditor(initial) {
             }
         },
 
-        // --- Output ---
+        goToReview() {
+            if (this.briefId === 0) return;
+            window.location.href = window.location.pathname + '?brief=' + this.briefId + '&review=1';
+        },
+
         async previewHtml() {
             try {
-                const data = await apiPost('render_html.php', { brief_id: this.briefId });
-                this.previewHtmlContent = data.html;
+                const data = await apiPost('render.php', { brief_id: this.briefId, format: 'html' });
+                this.previewHtmlContent = data.content;
                 this.previewOpen = true;
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
@@ -365,8 +359,8 @@ function briefEditor(initial) {
 
         async copyHtml() {
             try {
-                const data = await apiPost('render_html.php', { brief_id: this.briefId });
-                await navigator.clipboard.writeText(data.html);
+                const data = await apiPost('render.php', { brief_id: this.briefId, format: 'html' });
+                await navigator.clipboard.writeText(data.content);
                 this.copied = true;
                 setTimeout(() => { this.copied = false; }, 2000);
             } catch (err) {
@@ -386,7 +380,6 @@ function briefEditor(initial) {
             }
         },
 
-        // --- Grouping helpers ---
         groupedArticles() {
             const groups = {};
             for (const a of this.articles) {
@@ -394,7 +387,6 @@ function briefEditor(initial) {
                 groups[key] = groups[key] || { sectionSlug: key, sectionName: a.section_name, items: [] };
                 groups[key].items.push(a);
             }
-            // Preserve the order from this.sections (which is already ordered by display_order)
             const ordered = [];
             for (const s of this.sections) {
                 if (groups[s.slug]) ordered.push(groups[s.slug]);
@@ -409,5 +401,386 @@ function briefEditor(initial) {
     };
 }
 
-// Expose globally so Alpine can find it
+/* ============================================================
+   SECTIONS ADMIN (Alpine component)
+   Used on: admin/sections.php
+   ============================================================ */
+
+function sectionsAdmin(initial) {
+    return {
+        sections: initial.sections || [],
+
+        adding: false,
+        newSection: { name: '', routing_description: '' },
+
+        editingId: null,
+        editBuffer: { name: '', routing_description: '' },
+
+        statusMessage: '',
+        _sortable: null,
+
+        init() {
+            // Initialise SortableJS on the sections list for drag reorder
+            this.$nextTick(() => {
+                this.initSortable();
+            });
+        },
+
+        initSortable() {
+            const el = document.getElementById('sections-list');
+            if (!el || typeof Sortable === 'undefined') return;
+            if (this._sortable) { this._sortable.destroy(); }
+            this._sortable = Sortable.create(el, {
+                handle: '.section-row__drag',
+                animation: 150,
+                onEnd: async () => {
+                    const orderedIds = Array.from(el.querySelectorAll('.section-row'))
+                        .map(row => parseInt(row.dataset.id, 10))
+                        .filter(Boolean);
+                    try {
+                        await apiPost('sections_reorder.php', { ids: orderedIds });
+                        // Reorder local array to match DOM
+                        this.sections.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+                        this.flash('Order saved');
+                    } catch (err) {
+                        this.statusMessage = 'Error: ' + err.message;
+                    }
+                },
+            });
+        },
+
+        startAdd() {
+            this.adding = true;
+            this.newSection = { name: '', routing_description: '' };
+        },
+
+        cancelAdd() {
+            this.adding = false;
+        },
+
+        async saveNew() {
+            if (!this.newSection.name.trim()) return;
+            try {
+                const data = await apiPost('sections_create.php', {
+                    name: this.newSection.name.trim(),
+                    routing_description: this.newSection.routing_description.trim(),
+                });
+                const s = data.section;
+                this.sections.push({
+                    id: parseInt(s.id, 10),
+                    slug: s.slug,
+                    name: s.name,
+                    routing_description: s.routing_description || '',
+                    display_order: parseInt(s.display_order, 10),
+                    article_count: 0,
+                });
+                this.adding = false;
+                this.flash('Section added');
+                // Re-init sortable on the new DOM
+                this.$nextTick(() => this.initSortable());
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        startEdit(section) {
+            this.editingId = section.id;
+            this.editBuffer = {
+                name: section.name,
+                routing_description: section.routing_description || '',
+            };
+        },
+
+        cancelEdit() {
+            this.editingId = null;
+        },
+
+        async saveEdit(section) {
+            try {
+                const data = await apiPost('sections_update.php', {
+                    id: section.id,
+                    name: this.editBuffer.name.trim(),
+                    routing_description: this.editBuffer.routing_description.trim(),
+                });
+                // Apply to local
+                section.name = data.section.name;
+                section.routing_description = data.section.routing_description || '';
+                this.editingId = null;
+                this.flash('Section updated');
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        async deleteSection(section) {
+            // First call without confirm: get article count and warning
+            try {
+                const data = await apiPost('sections_delete.php', { id: section.id });
+                if (data.needs_confirmation) {
+                    if (!confirm(data.message)) return;
+                    await apiPost('sections_delete.php', { id: section.id, confirm: true });
+                }
+                this.sections = this.sections.filter(s => s.id !== section.id);
+                this.flash('Section deleted');
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        flash(message) {
+            this.statusMessage = message;
+            setTimeout(() => {
+                if (this.statusMessage === message) this.statusMessage = '';
+            }, 2500);
+        },
+    };
+}
+
+/* ============================================================
+   REVIEW SCREEN (Alpine component)
+   Used on: brief/review.php
+   ============================================================ */
+
+function reviewScreen(initial) {
+    return {
+        briefId: initial.briefId,
+        briefDate: initial.briefDate,
+        subjectLine: initial.subjectLine,
+        status: initial.status,
+        executiveSummary: initial.executiveSummary || '',
+        articles: initial.articles || [],
+        sections: initial.sections || [],
+
+        copiedFormat: null,
+        statusMessage: '',
+        execSaved: false,
+        _sortables: [],
+
+        init() {
+            this.$nextTick(() => this.initSortables());
+        },
+
+        initSortables() {
+            if (typeof Sortable === 'undefined') return;
+            // Kill any existing
+            for (const s of this._sortables) s.destroy();
+            this._sortables = [];
+
+            const containers = document.querySelectorAll('.review__articles');
+            containers.forEach(container => {
+                const s = Sortable.create(container, {
+                    group: 'review-articles',
+                    handle: '.review-article__handle',
+                    animation: 150,
+                    onEnd: (evt) => this.onDragEnd(evt),
+                });
+                this._sortables.push(s);
+            });
+        },
+
+        async onDragEnd(evt) {
+            // Collect new order across all containers
+            const containers = document.querySelectorAll('.review__articles');
+            const updates = [];
+            for (const container of containers) {
+                const sectionId = parseInt(container.dataset.sectionId, 10);
+                const ids = Array.from(container.querySelectorAll('.review-article'))
+                    .map(el => parseInt(el.dataset.id, 10))
+                    .filter(Boolean);
+                updates.push({ sectionId, ids });
+            }
+
+            // Apply: for each section's order, save via API (section_id set so cross-section moves update)
+            try {
+                for (const u of updates) {
+                    if (u.ids.length === 0) continue;
+                    await apiPost('reorder_articles.php', {
+                        brief_id: this.briefId,
+                        article_ids: u.ids,
+                        section_id: u.sectionId,
+                    });
+                }
+                // Sync local state: update section_id for any moved articles
+                for (const u of updates) {
+                    for (const id of u.ids) {
+                        const a = this.articles.find(x => x.id === id);
+                        if (a) a.section_id = u.sectionId;
+                    }
+                }
+                // Re-sync section_name and section_slug on moved articles
+                this.syncArticleSectionLabels();
+                this.flash('Order saved');
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        syncArticleSectionLabels() {
+            for (const a of this.articles) {
+                const section = this.sections.find(s => s.id === parseInt(a.section_id, 10));
+                if (section) {
+                    a.section_name = section.name;
+                    a.section_slug = section.slug;
+                }
+            }
+        },
+
+        groupedArticles() {
+            const groups = {};
+            for (const a of this.articles) {
+                const sid = parseInt(a.section_id, 10);
+                const section = this.sections.find(s => s.id === sid);
+                if (!section) continue;
+                const key = section.slug;
+                groups[key] = groups[key] || {
+                    sectionSlug: section.slug,
+                    sectionName: section.name,
+                    sectionId: section.id,
+                    items: [],
+                };
+                groups[key].items.push(a);
+            }
+            const ordered = [];
+            for (const s of this.sections) {
+                if (groups[s.slug]) ordered.push(groups[s.slug]);
+            }
+            return ordered;
+        },
+
+        async saveArticle(article) {
+            try {
+                await apiPost('update_summary.php', {
+                    article_id: article.id,
+                    summary: article.summary,
+                });
+                // Separate call for headline/outlet if those can change
+                // (update_summary only updates summary, so we use a combined approach)
+                // For headline/outlet changes, we'd need a separate endpoint.
+                // For now, summary edits auto-save here.
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        async changeSection(article) {
+            const newSectionId = parseInt(article.section_id, 10);
+            const newSection = this.sections.find(s => s.id === newSectionId);
+            if (!newSection) return;
+            try {
+                await apiPost('move_article.php', {
+                    article_id: article.id,
+                    section_slug: newSection.slug,
+                });
+                article.section_name = newSection.name;
+                article.section_slug = newSection.slug;
+                this.flash('Article moved to ' + newSection.name);
+                this.$nextTick(() => this.initSortables());
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        moveUp(article) {
+            const group = this.groupedArticles().find(g => g.items.some(i => i.id === article.id));
+            if (!group) return;
+            const idx = group.items.findIndex(i => i.id === article.id);
+            if (idx <= 0) return;
+            const ids = group.items.map(i => i.id);
+            [ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]];
+            this.saveGroupOrder(group.sectionId, ids);
+        },
+
+        moveDown(article) {
+            const group = this.groupedArticles().find(g => g.items.some(i => i.id === article.id));
+            if (!group) return;
+            const idx = group.items.findIndex(i => i.id === article.id);
+            if (idx < 0 || idx >= group.items.length - 1) return;
+            const ids = group.items.map(i => i.id);
+            [ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]];
+            this.saveGroupOrder(group.sectionId, ids);
+        },
+
+        async saveGroupOrder(sectionId, ids) {
+            try {
+                await apiPost('reorder_articles.php', {
+                    brief_id: this.briefId,
+                    article_ids: ids,
+                    section_id: sectionId,
+                });
+                // Apply local reorder: sort this.articles so the new order holds
+                const orderMap = {};
+                ids.forEach((id, i) => { orderMap[id] = i; });
+                this.articles.sort((a, b) => {
+                    if (a.section_id !== b.section_id) return 0;
+                    return (orderMap[a.id] ?? 999) - (orderMap[b.id] ?? 999);
+                });
+                this.flash('Order saved');
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        async saveExecutiveSummary() {
+            try {
+                await apiPost('update_executive_summary.php', {
+                    brief_id: this.briefId,
+                    executive_summary: this.executiveSummary,
+                });
+                this.execSaved = true;
+                setTimeout(() => { this.execSaved = false; }, 2000);
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        async copyFormat(format) {
+            try {
+                const data = await apiPost('render.php', {
+                    brief_id: this.briefId,
+                    format: format,
+                });
+                await navigator.clipboard.writeText(data.content);
+                this.copiedFormat = format;
+                setTimeout(() => { this.copiedFormat = null; }, 2500);
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        pdfUrl() {
+            const base = (window.BWFC_BASE || '').replace(/\/public\/?$/, '');
+            return base + '/api/export_pdf.php?brief_id=' + this.briefId;
+        },
+
+        async markSent() {
+            if (!confirm('Mark this brief as sent? It will be locked from further edits.')) return;
+            try {
+                await apiPost('mark_sent.php', { brief_id: this.briefId });
+                this.status = 'sent';
+                this.flash('Brief sent. Redirecting...');
+                setTimeout(() => {
+                    window.location.href = window.location.pathname + '?brief=' + this.briefId;
+                }, 800);
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
+        wordCount(text) {
+            if (!text) return 0;
+            return text.trim().split(/\s+/).filter(Boolean).length;
+        },
+
+        flash(message) {
+            this.statusMessage = message;
+            setTimeout(() => {
+                if (this.statusMessage === message) this.statusMessage = '';
+            }, 2500);
+        },
+    };
+}
+
+// Expose components globally so Alpine can find them
 window.briefEditor = briefEditor;
+window.sectionsAdmin = sectionsAdmin;
+window.reviewScreen = reviewScreen;

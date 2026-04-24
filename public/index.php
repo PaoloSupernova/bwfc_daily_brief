@@ -3,11 +3,12 @@
  * BWFC Daily Brief - Entry point and router.
  *
  * Routes:
- *   /                     → dashboard (list of briefs + quick-start)
- *   /?brief=new           → new brief for today (or open today's draft)
- *   /?brief=<id>          → edit existing brief (or view if sent)
- *   /?archive=1           → archive page (phase 2)
- *   /?admin=<page>        → admin UI (phase 2)
+ *   /                      → dashboard
+ *   /?brief=new            → new brief for today
+ *   /?brief=<id>           → edit existing brief
+ *   /?brief=<id>&review=1  → final review screen (edit + export)
+ *   /?archive=1            → archive page
+ *   /?admin=sections       → admin: manage sections
  */
 
 declare(strict_types=1);
@@ -20,11 +21,21 @@ use BWFC\DailyBrief\BriefRepository;
 Auth::requireLogin();
 
 $action = $_GET['brief'] ?? null;
+$review = isset($_GET['review']);
 $archive = isset($_GET['archive']);
 $admin = $_GET['admin'] ?? null;
 
-if ($action === 'new') {
-    // Open today's draft or create a placeholder view (brief record created on first article save)
+if ($admin !== null) {
+    switch ($admin) {
+        case 'sections':
+            $view = VIEWS_PATH . '/admin/sections.php';
+            $pageTitle = 'Admin - Sections';
+            break;
+        default:
+            $view = VIEWS_PATH . '/admin/index.php';
+            $pageTitle = 'Admin';
+    }
+} elseif ($action === 'new') {
     $today = date('Y-m-d');
     $existing = BriefRepository::findBriefByDate($today);
     if ($existing !== null) {
@@ -43,8 +54,14 @@ if ($action === 'new') {
     }
     $articles = BriefRepository::articlesForBrief($briefId);
     $isLocked = $brief['status'] === 'sent';
-    $view = $isLocked ? VIEWS_PATH . '/brief/view.php' : VIEWS_PATH . '/brief/edit.php';
-    $pageTitle = ($isLocked ? 'Daily Brief' : 'Edit Daily Brief') . ' - ' . date('l jS F Y', strtotime($brief['brief_date']));
+
+    if ($review) {
+        $view = VIEWS_PATH . '/brief/review.php';
+        $pageTitle = 'Review - ' . date('l jS F Y', strtotime($brief['brief_date']));
+    } else {
+        $view = $isLocked ? VIEWS_PATH . '/brief/view.php' : VIEWS_PATH . '/brief/edit.php';
+        $pageTitle = ($isLocked ? 'Daily Brief' : 'Edit Daily Brief') . ' - ' . date('l jS F Y', strtotime($brief['brief_date']));
+    }
 } elseif ($archive) {
     $view = VIEWS_PATH . '/archive/index.php';
     $pageTitle = 'Archive';

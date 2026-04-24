@@ -6,10 +6,14 @@ namespace BWFC\DailyBrief;
 use RuntimeException;
 
 /**
- * Data access for briefs and their articles.
+ * Data access for briefs, articles, and sections.
  */
 final class BriefRepository
 {
+    // ============================================================
+    // BRIEFS
+    // ============================================================
+
     public static function createBrief(string $briefDate, bool $weekendRollup = false): int
     {
         return Database::insert(
@@ -98,6 +102,10 @@ final class BriefRepository
         return $row !== null && $row['status'] === 'sent';
     }
 
+    // ============================================================
+    // ARTICLES
+    // ============================================================
+
     public static function addArticle(int $briefId, array $data): int
     {
         if (self::isLocked($briefId)) {
@@ -138,6 +146,35 @@ final class BriefRepository
         Database::execute(
             'UPDATE brief_articles SET summary = :s, was_edited = :e WHERE id = :id',
             ['s' => $summary, 'e' => $wasEdited ? 1 : 0, 'id' => $articleId]
+        );
+    }
+
+    /**
+     * Update multiple fields of an article (headline, outlet, etc).
+     * @param array<string, mixed> $fields
+     */
+    public static function updateArticleFields(int $articleId, array $fields): void
+    {
+        $briefId = self::getArticleBriefId($articleId);
+        if ($briefId !== null && self::isLocked($briefId)) {
+            throw new RuntimeException('Brief is sent and locked');
+        }
+
+        $allowed = ['headline', 'outlet_name', 'summary', 'section_id'];
+        $sets = [];
+        $params = ['id' => $articleId];
+
+        foreach ($fields as $k => $v) {
+            if (!in_array($k, $allowed, true)) continue;
+            $sets[] = "{$k} = :{$k}";
+            $params[$k] = $v;
+        }
+
+        if (count($sets) === 0) return;
+
+        Database::execute(
+            'UPDATE brief_articles SET ' . implode(', ', $sets) . ', was_edited = 1 WHERE id = :id',
+            $params
         );
     }
 
@@ -185,6 +222,46 @@ final class BriefRepository
         );
     }
 
+    /**
+     * Move an article to a new position within its section or to a new section.
+     * New order values are renumbered (10, 20, 30...) to keep spacing clean.
+     *
+     * @param array<int, int> $articleIdsInOrder Article IDs in the order they should appear
+     * @param int|null $sectionId If provided, move all articles to this section
+     */
+    public static function reorderArticles(int $briefId, array $articleIdsInOrder, ?int $sectionId = null): void
+    {
+        if (self::isLocked($briefId)) {
+            throw new RuntimeException('Brief is sent and locked');
+        }
+
+        Database::beginTransaction();
+        try {
+            $order = 10;
+            foreach ($articleIdsInOrder as $articleId) {
+                $articleId = (int)$articleId;
+                if ($sectionId !== null) {
+                    Database::execute(
+                        'UPDATE brief_articles SET section_id = :s, display_order = :o
+                         WHERE id = :id AND brief_id = :b',
+                        ['s' => $sectionId, 'o' => $order, 'id' => $articleId, 'b' => $briefId]
+                    );
+                } else {
+                    Database::execute(
+                        'UPDATE brief_articles SET display_order = :o
+                         WHERE id = :id AND brief_id = :b',
+                        ['o' => $order, 'id' => $articleId, 'b' => $briefId]
+                    );
+                }
+                $order += 10;
+            }
+            Database::commit();
+        } catch (\Throwable $e) {
+            Database::rollBack();
+            throw $e;
+        }
+    }
+
     private static function nextDisplayOrder(int $briefId, int $sectionId): int
     {
         $row = Database::selectOne(
@@ -205,14 +282,18 @@ final class BriefRepository
         return $row === null ? null : (int)$row['brief_id'];
     }
 
+    // ============================================================
+    // SECTIONS
+    // ============================================================
+
     /**
      * @return array<int, array<string, mixed>>
      */
     public static function sections(bool $activeOnly = true): array
     {
-        $sql = 'SELECT * FROM sections';
+        $sql = 'SELECT * FROM sections WHERE deleted_at IS NULL';
         if ($activeOnly) {
-            $sql .= ' WHERE is_active = 1';
+            $sql .= ' AND is_active = 1';
         }
         $sql .= ' ORDER BY display_order ASC';
         return Database::select($sql);
@@ -221,8 +302,98 @@ final class BriefRepository
     public static function getSectionBySlug(string $slug): ?array
     {
         return Database::selectOne(
-            'SELECT * FROM sections WHERE slug = :s LIMIT 1',
+            'SELECT * FROM sections WHERE slug = :s AND deleted_at IS NULL LIMIT 1',
             ['s' => $slug]
         );
+    }
+
+    public static function getSection(int $id): ?array
+    {
+        return Database::selectOne(
+            'SELECT * FROM sections WHERE id = :id AND deleted_at IS NULL LIMIT 1',
+            ['id' => $id]
+        );
+    }
+
+    public static function createSection(string $name, string $routingDescription = ''): int
+    {
+        $slug = self::generateSlug($name);
+        $order = (int)(Database::selectOne('SELECT COALESCE(MAX(display_order), 0) + 10 AS n FROM sections')['n'] ?? 10);
+
+        return Database::insert(
+            'INSERT INTO sections (slug, name, routing_description, display_order, is_active)
+             VALUES (:s, :n, :r, :o, 1)',
+            ['s' => $slug, 'n' => $name, 'r' => $routingDescription, 'o' => $order]
+        );
+    }
+
+    public static function updateSection(int $id, string $name, string $routingDescription): void
+    {
+        Database::execute(
+            'UPDATE sections SET name = :n, routing_description = :r WHERE id = :id',
+            ['n' => $name, 'r' => $routingDescription, 'id' => $id]
+        );
+    }
+
+    public static function countArticlesInSection(int $sectionId): int
+    {
+        $row = Database::selectOne(
+            'SELECT COUNT(*) AS n FROM brief_articles WHERE section_id = :s',
+            ['s' => $sectionId]
+        );
+        return (int)($row['n'] ?? 0);
+    }
+
+    /**
+     * Soft-delete a section. If articles exist, they're left in the now-hidden section
+     * (past briefs still render them); only new article creation to this section is blocked.
+     */
+    public static function deleteSection(int $id): void
+    {
+        Database::execute(
+            'UPDATE sections SET deleted_at = NOW(), is_active = 0 WHERE id = :id',
+            ['id' => $id]
+        );
+    }
+
+    /**
+     * @param array<int, int> $sectionIdsInOrder Section IDs in desired order
+     */
+    public static function reorderSections(array $sectionIdsInOrder): void
+    {
+        Database::beginTransaction();
+        try {
+            $order = 10;
+            foreach ($sectionIdsInOrder as $id) {
+                Database::execute(
+                    'UPDATE sections SET display_order = :o WHERE id = :id',
+                    ['o' => $order, 'id' => (int)$id]
+                );
+                $order += 10;
+            }
+            Database::commit();
+        } catch (\Throwable $e) {
+            Database::rollBack();
+            throw $e;
+        }
+    }
+
+    private static function generateSlug(string $name): string
+    {
+        $slug = strtolower($name);
+        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug) ?? '';
+        $slug = trim($slug, '_');
+        if ($slug === '') {
+            $slug = 'section_' . time();
+        }
+
+        // Ensure uniqueness
+        $base = $slug;
+        $i = 2;
+        while (Database::selectOne('SELECT id FROM sections WHERE slug = :s', ['s' => $slug]) !== null) {
+            $slug = $base . '_' . $i++;
+        }
+
+        return $slug;
     }
 }

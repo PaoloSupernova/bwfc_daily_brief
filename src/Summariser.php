@@ -9,7 +9,7 @@ use RuntimeException;
  * Coordinates Claude API calls for the three prompt types:
  * - article_summary
  * - executive_summary
- * - section_suggest
+ * - section_suggest (now uses dynamic section rules from the database)
  *
  * Pulls active prompt templates from the database and hydrates placeholders.
  */
@@ -36,18 +36,33 @@ final class Summariser
 
     public function suggestSection(string $headline, string $outlet, string $content): string
     {
+        $sections = BriefRepository::sections(true);
+        $rules = '';
+        $allowed = [];
+        foreach ($sections as $s) {
+            $label = strtoupper($s['slug']);
+            $allowed[] = $label;
+            $description = trim((string)($s['routing_description'] ?? '')) ?: 'General section for ' . $s['name'];
+            $rules .= "- {$label}: {$description}\n";
+        }
+
         $template = $this->getPromptTemplate('section_suggest');
         $prompt = $this->hydrate($template, [
             'headline' => $headline,
             'outlet' => $outlet,
             'content' => $this->truncateContent($content, 1500),
+            'section_rules' => trim($rules),
         ]);
 
         $raw = $this->claude->complete($prompt);
         $label = strtoupper(trim(preg_replace('/[^A-Z_]/i', '', $raw) ?? ''));
 
-        $allowed = ['BWFC', 'EFL', 'WOMENS_GAME', 'GENERAL_FOOTBALL', 'OTHER_SPORT'];
-        return in_array($label, $allowed, true) ? $label : 'GENERAL_FOOTBALL';
+        if (in_array($label, $allowed, true)) {
+            return $label;
+        }
+
+        // Fallback: return the first active section slug in uppercase
+        return count($allowed) > 0 ? $allowed[0] : 'BWFC';
     }
 
     /**

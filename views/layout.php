@@ -21,13 +21,14 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
         window.BWFC_BASE = '<?= $basePath ?>';
     </script>
     <script src="<?= $basePath ?>/js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
 <body>
     <header class="site-header">
         <div class="site-header__inner">
             <a href="<?= $basePath ?>/" class="site-header__brand">
-                <img src="<?= $basePath ?>/img/bwfc-marque.svg" alt="Bolton Wanderers" class="site-header__marque">
+                <img src="<?= $basePath ?>/img/bwfc-marque.png" alt="Bolton Wanderers" class="site-header__marque">
                 <div class="site-header__title">
                     <div class="site-header__title-main">Daily Brief</div>
                     <div class="site-header__title-sub">Communications Team Tool</div>
@@ -37,6 +38,7 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 <a href="<?= $basePath ?>/" class="site-nav__link">Dashboard</a>
                 <a href="<?= $basePath ?>/?brief=new" class="site-nav__link site-nav__link--primary">New Brief</a>
                 <a href="<?= $basePath ?>/?archive=1" class="site-nav__link">Archive</a>
+                <a href="<?= $basePath ?>/?admin=sections" class="site-nav__link">Admin</a>
                 <?php if ($user !== null): ?>
                     <span class="site-nav__user"><?= htmlspecialchars($user['name'], ENT_QUOTES) ?></span>
                 <?php endif; ?>
@@ -51,7 +53,7 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
     <footer class="site-footer">
         <div class="site-footer__inner">
             <span>BWFC Daily Brief Tool &middot; Internal use only</span>
-            <span class="site-footer__meta">v1.0 &middot; <?= date('Y') ?></span>
+            <span class="site-footer__meta">v1.2 &middot; <?= date('Y') ?></span>
         </div>
     </footer>
 </body>
