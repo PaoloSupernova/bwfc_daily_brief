@@ -21,6 +21,9 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
         window.BWFC_BASE = '<?= $basePath ?>';
     </script>
     <script src="<?= $basePath ?>/js/app.js"></script>
+    <script src="<?= $basePath ?>/js/archive.js"></script>
+    <script src="<?= $basePath ?>/js/dashboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
@@ -53,7 +56,7 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
     <footer class="site-footer">
         <div class="site-footer__inner">
             <span>BWFC Daily Brief Tool &middot; Internal use only</span>
-            <span class="site-footer__meta">v1.2 &middot; <?= date('Y') ?></span>
+            <span class="site-footer__meta">v1.6 &middot; <?= date('Y') ?></span>
         </div>
     </footer>
 </body>

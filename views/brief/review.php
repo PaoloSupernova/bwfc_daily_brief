@@ -75,19 +75,27 @@ $jsState = [
 
                         <div class="review-article__body">
                             <div class="review-article__top">
-                                <input type="text" class="review-article__outlet"
-                                       x-model="article.outlet"
-                                       @blur="saveArticle(article)"
-                                       placeholder="Outlet">
-                                <input type="text" class="review-article__headline"
-                                       x-model="article.headline"
-                                       @blur="saveArticle(article)"
-                                       placeholder="Headline">
+                                <textarea class="review-article__outlet"
+                                          x-model="article.outlet"
+                                          x-init="autoResize($el)"
+                                          @input="autoResize($event.target)"
+                                          @blur="saveArticleField(article)"
+                                          rows="1"
+                                          placeholder="Outlet"></textarea>
+                                <textarea class="review-article__headline"
+                                          x-model="article.headline"
+                                          x-init="autoResize($el)"
+                                          @input="autoResize($event.target)"
+                                          @blur="saveArticleField(article)"
+                                          rows="1"
+                                          placeholder="Headline"></textarea>
                             </div>
 
                             <textarea class="review-article__summary" rows="4"
                                       x-model="article.summary"
-                                      @blur="saveArticle(article)"></textarea>
+                                      x-init="autoResize($el, 80)"
+                                      @input="autoResize($event.target, 80)"
+                                      @blur="saveArticleField(article)"></textarea>
 
                             <div class="review-article__controls">
                                 <select class="select select--small" x-model="article.section_id" @change="changeSection(article)">

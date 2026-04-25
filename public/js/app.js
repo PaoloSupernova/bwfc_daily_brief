@@ -3,18 +3,12 @@
    Alpine.js components for editor, admin, and review screens
    ============================================================ */
 
-/**
- * Build a full API URL from the base path.
- */
 function apiUrl(endpoint) {
     const base = window.BWFC_BASE || '';
     const root = base.replace(/\/public\/?$/, '');
     return root + '/api/' + endpoint;
 }
 
-/**
- * POST helper returning parsed JSON.
- */
 async function apiPost(endpoint, body) {
     const res = await fetch(apiUrl(endpoint), {
         method: 'POST',
@@ -28,9 +22,6 @@ async function apiPost(endpoint, body) {
     return data;
 }
 
-/**
- * GET helper returning parsed JSON.
- */
 async function apiGet(endpoint) {
     const res = await fetch(apiUrl(endpoint));
     const data = await res.json().catch(() => ({ ok: false, error: 'Invalid JSON response' }));
@@ -40,9 +31,6 @@ async function apiGet(endpoint) {
     return data;
 }
 
-/**
- * Section slug to uppercase label (used by section suggest response).
- */
 const SECTION_SLUG_MAP = {
     'BWFC': 'bwfc',
     'EFL': 'efl',
@@ -68,9 +56,20 @@ function emptyPending() {
     };
 }
 
+/**
+ * Resize a textarea to match its content height.
+ * Called on input and on initial mount.
+ */
+function autoResizeTextarea(el, minHeight) {
+    if (!el) return;
+    const min = minHeight || 0;
+    el.style.height = 'auto';
+    const newHeight = Math.max(el.scrollHeight, min);
+    el.style.height = newHeight + 'px';
+}
+
 /* ============================================================
-   BRIEF EDITOR (Alpine component)
-   Used on: brief/new.php, brief/edit.php (via _editor.php)
+   BRIEF EDITOR
    ============================================================ */
 
 function briefEditor(initial) {
@@ -402,8 +401,7 @@ function briefEditor(initial) {
 }
 
 /* ============================================================
-   SECTIONS ADMIN (Alpine component)
-   Used on: admin/sections.php
+   SECTIONS ADMIN
    ============================================================ */
 
 function sectionsAdmin(initial) {
@@ -420,7 +418,6 @@ function sectionsAdmin(initial) {
         _sortable: null,
 
         init() {
-            // Initialise SortableJS on the sections list for drag reorder
             this.$nextTick(() => {
                 this.initSortable();
             });
@@ -439,7 +436,6 @@ function sectionsAdmin(initial) {
                         .filter(Boolean);
                     try {
                         await apiPost('sections_reorder.php', { ids: orderedIds });
-                        // Reorder local array to match DOM
                         this.sections.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
                         this.flash('Order saved');
                     } catch (err) {
@@ -476,7 +472,6 @@ function sectionsAdmin(initial) {
                 });
                 this.adding = false;
                 this.flash('Section added');
-                // Re-init sortable on the new DOM
                 this.$nextTick(() => this.initSortable());
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
@@ -502,7 +497,6 @@ function sectionsAdmin(initial) {
                     name: this.editBuffer.name.trim(),
                     routing_description: this.editBuffer.routing_description.trim(),
                 });
-                // Apply to local
                 section.name = data.section.name;
                 section.routing_description = data.section.routing_description || '';
                 this.editingId = null;
@@ -513,7 +507,6 @@ function sectionsAdmin(initial) {
         },
 
         async deleteSection(section) {
-            // First call without confirm: get article count and warning
             try {
                 const data = await apiPost('sections_delete.php', { id: section.id });
                 if (data.needs_confirmation) {
@@ -537,8 +530,7 @@ function sectionsAdmin(initial) {
 }
 
 /* ============================================================
-   REVIEW SCREEN (Alpine component)
-   Used on: brief/review.php
+   REVIEW SCREEN
    ============================================================ */
 
 function reviewScreen(initial) {
@@ -557,12 +549,25 @@ function reviewScreen(initial) {
         _sortables: [],
 
         init() {
-            this.$nextTick(() => this.initSortables());
+            this.$nextTick(() => {
+                this.initSortables();
+                // Resize all auto-grow textareas after initial render
+                document.querySelectorAll('.review-article__outlet, .review-article__headline').forEach(el => {
+                    autoResizeTextarea(el);
+                });
+                document.querySelectorAll('.review-article__summary').forEach(el => {
+                    autoResizeTextarea(el, 80);
+                });
+            });
+        },
+
+        // Exposed so x-init can call it from the template
+        autoResize(el, minHeight) {
+            autoResizeTextarea(el, minHeight);
         },
 
         initSortables() {
             if (typeof Sortable === 'undefined') return;
-            // Kill any existing
             for (const s of this._sortables) s.destroy();
             this._sortables = [];
 
@@ -579,7 +584,6 @@ function reviewScreen(initial) {
         },
 
         async onDragEnd(evt) {
-            // Collect new order across all containers
             const containers = document.querySelectorAll('.review__articles');
             const updates = [];
             for (const container of containers) {
@@ -590,7 +594,6 @@ function reviewScreen(initial) {
                 updates.push({ sectionId, ids });
             }
 
-            // Apply: for each section's order, save via API (section_id set so cross-section moves update)
             try {
                 for (const u of updates) {
                     if (u.ids.length === 0) continue;
@@ -600,14 +603,12 @@ function reviewScreen(initial) {
                         section_id: u.sectionId,
                     });
                 }
-                // Sync local state: update section_id for any moved articles
                 for (const u of updates) {
                     for (const id of u.ids) {
                         const a = this.articles.find(x => x.id === id);
                         if (a) a.section_id = u.sectionId;
                     }
                 }
-                // Re-sync section_name and section_slug on moved articles
                 this.syncArticleSectionLabels();
                 this.flash('Order saved');
             } catch (err) {
@@ -647,16 +648,18 @@ function reviewScreen(initial) {
             return ordered;
         },
 
-        async saveArticle(article) {
+        /**
+         * Save any subset of editable fields (headline, outlet, summary) on an article.
+         * Called from blur on the inline textareas.
+         */
+        async saveArticleField(article) {
             try {
-                await apiPost('update_summary.php', {
+                await apiPost('update_article.php', {
                     article_id: article.id,
+                    headline: article.headline,
+                    outlet_name: article.outlet,
                     summary: article.summary,
                 });
-                // Separate call for headline/outlet if those can change
-                // (update_summary only updates summary, so we use a combined approach)
-                // For headline/outlet changes, we'd need a separate endpoint.
-                // For now, summary edits auto-save here.
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
             }
@@ -707,7 +710,6 @@ function reviewScreen(initial) {
                     article_ids: ids,
                     section_id: sectionId,
                 });
-                // Apply local reorder: sort this.articles so the new order holds
                 const orderMap = {};
                 ids.forEach((id, i) => { orderMap[id] = i; });
                 this.articles.sort((a, b) => {
@@ -780,7 +782,6 @@ function reviewScreen(initial) {
     };
 }
 
-// Expose components globally so Alpine can find them
 window.briefEditor = briefEditor;
 window.sectionsAdmin = sectionsAdmin;
 window.reviewScreen = reviewScreen;
