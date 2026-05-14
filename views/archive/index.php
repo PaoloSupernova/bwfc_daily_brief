@@ -160,6 +160,7 @@ $jsState = [
                         <p class="search-hit__snippet" x-html="highlight(hit.snippet)"></p>
                         <div class="search-hit__actions">
                             <a :href="briefUrl(hit.brief_id)" target="_blank" class="link-btn">Jump to brief &rarr;</a>
+                            <a :href="pdfUrl(hit.brief_id)" download class="link-btn">Download PDF</a>
                         </div>
                     </article>
                 </template>
@@ -205,7 +206,8 @@ $jsState = [
                                         </div>
                                     </div>
                                     <div class="brief-card__action">
-                                        <a :href="briefUrl(brief.id)" target="_blank" class="btn btn--secondary btn--small">Open in new tab &rarr;</a>
+                                        <a :href="pdfUrl(brief.id)" download class="btn btn--secondary btn--small">Download PDF</a>
+                                        <a :href="briefUrl(brief.id)" target="_blank" class="btn btn--secondary btn--small">Open &rarr;</a>
                                     </div>
                                 </article>
                             </template>

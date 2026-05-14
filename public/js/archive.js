@@ -253,6 +253,11 @@ function archiveScreen(initial) {
             const base = window.BWFC_BASE || '';
             return base + '/?brief=' + briefId;
         },
+
+        pdfUrl(briefId) {
+            const base = window.BWFC_BASE || '';
+            return base + '/api/export_pdf.php?brief_id=' + briefId;
+        },
     };
 }
 
