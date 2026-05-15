@@ -256,7 +256,8 @@ function archiveScreen(initial) {
 
         pdfUrl(briefId) {
             const base = window.BWFC_BASE || '';
-            return base + '/api/export_pdf.php?brief_id=' + briefId;
+            const root = base.replace(/\/public\/?$/, '');
+            return root + '/api/export_pdf.php?brief_id=' + briefId;
         },
     };
 }
