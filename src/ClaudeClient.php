@@ -51,13 +51,41 @@ final class ClaudeClient
             $payload['system'] = $systemPrompt;
         }
 
-        $response = $this->request($payload);
+        $response = $this->requestWithRetry($payload);
 
         if (!isset($response['content'][0]['text'])) {
             throw new RuntimeException('Claude response malformed: no text block returned');
         }
 
         return trim($response['content'][0]['text']);
+    }
+
+    /**
+     * Retry on 529 overload with exponential backoff (3 attempts: 2s, 4s, 8s).
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function requestWithRetry(array $payload): array
+    {
+        $delays = [2, 4, 8];
+        $attempt = 0;
+
+        while (true) {
+            try {
+                return $this->request($payload);
+            } catch (RuntimeException $e) {
+                $isOverload = str_contains($e->getMessage(), 'temporarily busy')
+                    || str_contains($e->getMessage(), '529');
+
+                if (!$isOverload || $attempt >= count($delays)) {
+                    throw $e;
+                }
+
+                sleep($delays[$attempt]);
+                $attempt++;
+            }
+        }
     }
 
     /**
