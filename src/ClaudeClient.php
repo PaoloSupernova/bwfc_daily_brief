@@ -96,6 +96,9 @@ final class ClaudeClient
 
         if ($httpCode >= 400) {
             $message = $decoded['error']['message'] ?? $body;
+            if ($httpCode === 529 || str_contains(strtolower((string)$message), 'overload')) {
+                throw new RuntimeException('The AI service is temporarily busy. Please wait a moment and try again.');
+            }
             throw new RuntimeException("Claude API error ({$httpCode}): {$message}");
         }
 
