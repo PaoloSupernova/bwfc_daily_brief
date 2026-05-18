@@ -98,10 +98,24 @@ final class ClaudeClient
     {
         $ch = curl_init(self::API_URL);
 
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            // Fallback: strip non-UTF-8 bytes and retry encoding
+            array_walk_recursive($payload, function (&$v) {
+                if (is_string($v)) {
+                    $v = mb_convert_encoding($v, 'UTF-8', 'UTF-8');
+                }
+            });
+            $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        }
+        if ($json === false || $json === '') {
+            throw new RuntimeException('Failed to encode request payload as JSON: ' . json_last_error_msg());
+        }
+
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            CURLOPT_POSTFIELDS => $json,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'x-api-key: ' . $this->apiKey,
