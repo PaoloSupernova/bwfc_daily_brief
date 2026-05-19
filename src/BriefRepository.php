@@ -113,14 +113,17 @@ final class BriefRepository
         }
 
         $order = self::nextDisplayOrder($briefId, (int)$data['section_id']);
+        $parentId = isset($data['parent_article_id']) && $data['parent_article_id'] > 0
+            ? (int)$data['parent_article_id']
+            : null;
 
         return Database::insert(
             'INSERT INTO brief_articles
                 (brief_id, section_id, display_order, url, outlet_name, headline,
-                 article_content, summary, summary_original, was_paywall_fallback)
+                 article_content, summary, summary_original, was_paywall_fallback, parent_article_id)
              VALUES
                 (:brief_id, :section_id, :display_order, :url, :outlet_name, :headline,
-                 :article_content, :summary, :summary_original, :was_paywall_fallback)',
+                 :article_content, :summary, :summary_original, :was_paywall_fallback, :parent_article_id)',
             [
                 'brief_id' => $briefId,
                 'section_id' => (int)$data['section_id'],
@@ -132,6 +135,7 @@ final class BriefRepository
                 'summary' => $data['summary'] ?? '',
                 'summary_original' => $data['summary_original'] ?? ($data['summary'] ?? ''),
                 'was_paywall_fallback' => !empty($data['was_paywall_fallback']) ? 1 : 0,
+                'parent_article_id' => $parentId,
             ]
         );
     }
@@ -220,6 +224,36 @@ final class BriefRepository
              ORDER BY s.display_order ASC, a.display_order ASC, a.id ASC',
             ['id' => $briefId]
         );
+    }
+
+    /**
+     * Returns only standalone (non-related) articles — used for duplicate detection context.
+     * @return array<int, array<string, mixed>>
+     */
+    public static function standaloneArticlesForBrief(int $briefId): array
+    {
+        return Database::select(
+            'SELECT a.id, a.headline, a.summary, s.name AS section_name
+             FROM brief_articles a
+             JOIN sections s ON s.id = a.section_id
+             WHERE a.brief_id = :id AND a.parent_article_id IS NULL
+             ORDER BY a.id ASC',
+            ['id' => $briefId]
+        );
+    }
+
+    /**
+     * Delete an article and cascade-delete any related coverage children.
+     */
+    public static function deleteArticleWithChildren(int $articleId): void
+    {
+        $briefId = self::getArticleBriefId($articleId);
+        if ($briefId !== null && self::isLocked($briefId)) {
+            throw new RuntimeException('Brief is sent and locked');
+        }
+
+        Database::execute('DELETE FROM brief_articles WHERE parent_article_id = :id', ['id' => $articleId]);
+        Database::execute('DELETE FROM brief_articles WHERE id = :id', ['id' => $articleId]);
     }
 
     /**

@@ -701,6 +701,94 @@ code {
     gap: 16px;
 }
 
+/* ---------- Article "More:" related coverage ---------- */
+.article-card__more {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    font-size: 12px;
+    color: var(--ink-muted);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+}
+.article-card__more-label {
+    font-weight: 700;
+    color: var(--bwfc-navy);
+    flex-shrink: 0;
+    margin-right: 2px;
+}
+.article-card__more-link {
+    color: var(--bwfc-blue);
+    text-decoration: none;
+}
+.article-card__more-link:hover { text-decoration: underline; }
+.article-card__more-sep {
+    color: var(--border);
+    margin: 0 4px;
+    font-weight: 300;
+}
+.article-card__more-remove {
+    background: none;
+    border: none;
+    color: var(--ink-subtle);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    opacity: 0.5;
+}
+.article-card__more-remove:hover { opacity: 1; color: var(--error); }
+
+/* ---------- Duplicate suggestion panel ---------- */
+.duplicate-panel {
+    background: #EEF4FF;
+    border: 1px solid #B8D0F8;
+    border-left: 4px solid var(--bwfc-blue);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-top: 12px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+.duplicate-panel__icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+    color: var(--bwfc-blue);
+    margin-top: 2px;
+}
+.duplicate-panel__body { flex: 1; }
+.duplicate-panel__title {
+    font-weight: 700;
+    color: var(--bwfc-navy);
+    margin: 0 0 6px;
+    font-size: 15px;
+}
+.duplicate-panel__text {
+    font-size: 14px;
+    color: var(--ink);
+    margin: 0 0 6px;
+}
+.duplicate-panel__meta {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin: 0 0 8px;
+}
+.duplicate-panel__meta a { color: var(--bwfc-blue); }
+.duplicate-panel__hint {
+    font-size: 13px;
+    color: var(--ink-subtle);
+    margin: 0 0 14px;
+}
+.duplicate-panel__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 /* ---------- Output / preview ---------- */
 .output-actions {
     display: flex;

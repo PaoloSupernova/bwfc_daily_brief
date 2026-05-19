@@ -1,8 +1,9 @@
 <?php
 /**
  * POST /api/save_article.php
- * Commit an article to a brief. Creates the brief if it does not exist yet for the date.
- * Body: { brief_id?, brief_date, url, outlet_name, headline, article_content, summary, summary_original, section_slug, was_paywall_fallback }
+ * Body: { brief_id?, brief_date, url, outlet_name, headline, article_content,
+ *         summary, summary_original, section_slug, was_paywall_fallback,
+ *         parent_article_id? }
  * Returns: { brief_id, article_id, article }
  */
 
@@ -17,15 +18,27 @@ $input = api_input();
 
 $briefId = isset($input['brief_id']) ? (int)$input['brief_id'] : 0;
 $briefDate = trim((string)($input['brief_date'] ?? date('Y-m-d')));
-$sectionSlug = trim((string)($input['section_slug'] ?? ''));
+$parentArticleId = isset($input['parent_article_id']) && (int)$input['parent_article_id'] > 0
+    ? (int)$input['parent_article_id']
+    : null;
 
-if ($sectionSlug === '') {
-    api_error('Section is required');
-}
-
-$section = BriefRepository::getSectionBySlug($sectionSlug);
-if ($section === null) {
-    api_error('Unknown section: ' . $sectionSlug);
+// Resolve section: related articles inherit the parent's section
+if ($parentArticleId !== null) {
+    $parentArticle = BriefRepository::getArticle($parentArticleId);
+    if ($parentArticle === null) {
+        api_error('Parent article not found', 404);
+    }
+    $section = ['id' => (int)$parentArticle['section_id']];
+    $sectionSlug = (string)$parentArticle['section_slug'];
+} else {
+    $sectionSlug = trim((string)($input['section_slug'] ?? ''));
+    if ($sectionSlug === '') {
+        api_error('Section is required');
+    }
+    $section = BriefRepository::getSectionBySlug($sectionSlug);
+    if ($section === null) {
+        api_error('Unknown section: ' . $sectionSlug);
+    }
 }
 
 // Create brief if needed
@@ -54,13 +67,15 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary' => (string)($input['summary'] ?? ''),
     'summary_original' => (string)($input['summary_original'] ?? ($input['summary'] ?? '')),
     'was_paywall_fallback' => !empty($input['was_paywall_fallback']),
+    'parent_article_id' => $parentArticleId,
 ]);
 
 AuditLog::record('article_added', 'article', $articleId, [
     'brief_id' => $briefId,
     'section' => $sectionSlug,
     'outlet' => $input['outlet_name'] ?? null,
-    'was_edited' => !empty($input['was_edited']),
+    'is_related' => $parentArticleId !== null,
+    'parent_id' => $parentArticleId,
 ]);
 
 $article = BriefRepository::getArticle($articleId);

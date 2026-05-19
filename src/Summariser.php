@@ -22,6 +22,66 @@ final class Summariser
         $this->claude = $claude ?? new ClaudeClient();
     }
 
+    /**
+     * Detect if a new article covers the same story as one already in the brief.
+     *
+     * @param array<int, array{id: int, headline: string, summary: string}> $existingArticles
+     * @return array{article_id: int, headline: string}|null  null = unique story
+     */
+    public function detectDuplicate(string $headline, string $content, array $existingArticles): ?array
+    {
+        if (count($existingArticles) === 0) {
+            return null;
+        }
+
+        $existingList = '';
+        foreach ($existingArticles as $a) {
+            $existingList .= '[' . $a['id'] . '] ' . $a['headline'] . "\n";
+            $summary = trim((string)($a['summary'] ?? ''));
+            if ($summary !== '') {
+                $existingList .= 'Summary: ' . mb_substr($summary, 0, 200) . "\n";
+            }
+            $existingList .= "\n";
+        }
+
+        $contentExcerpt = $this->truncateContent($content, 800);
+
+        $prompt = <<<PROMPT
+You are a duplicate story detector for a football news digest.
+
+NEW ARTICLE
+Headline: {$headline}
+Content excerpt: {$contentExcerpt}
+
+TODAY'S BRIEF
+{$existingList}
+TASK
+If the new article covers the same news story as one of today's articles (same match result, same transfer, same announcement, same incident), reply with ONLY the ID number of that article (e.g. "42").
+If it is a genuinely different story, reply with ONLY the word: UNIQUE
+
+Do not include any explanation. One word or number only.
+PROMPT;
+
+        $raw = trim($this->claude->complete($prompt));
+
+        if (strtoupper($raw) === 'UNIQUE') {
+            return null;
+        }
+
+        $matched = (int)preg_replace('/\D/', '', $raw);
+        if ($matched === 0) {
+            return null;
+        }
+
+        foreach ($existingArticles as $a) {
+            if ((int)$a['id'] === $matched) {
+                return ['article_id' => $matched, 'headline' => (string)$a['headline']];
+            }
+        }
+
+        return null;
+    }
+
     public function summariseArticle(string $headline, string $outlet, string $content): string
     {
         $template = $this->getPromptTemplate('article_summary');

@@ -8,6 +8,20 @@ declare(strict_types=1);
 
 $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 $briefDate = new DateTime($brief['brief_date']);
+// Build related-coverage index keyed by parent_article_id
+$relatedByParent = [];
+foreach ($articles as $a) {
+    if (!empty($a['parent_article_id'])) {
+        $pid = (int)$a['parent_article_id'];
+        $relatedByParent[$pid][] = [
+            'id' => (int)$a['id'],
+            'outlet' => (string)$a['outlet_name'],
+            'headline' => (string)$a['headline'],
+            'url' => (string)$a['url'],
+        ];
+    }
+}
+
 $jsState = [
     'briefId' => (int)$brief['id'],
     'briefDate' => $brief['brief_date'],
@@ -22,7 +36,8 @@ $jsState = [
         'section_name' => (string)$a['section_name'],
         'section_slug' => (string)$a['section_slug'],
         'was_edited' => (bool)$a['was_edited'],
-    ], $articles)),
+        'related' => $relatedByParent[(int)$a['id']] ?? [],
+    ], array_filter($articles, fn($a) => empty($a['parent_article_id'])))),
     'sections' => array_values(array_map(fn($s) => [
         'slug' => (string)$s['slug'],
         'name' => (string)$s['name'],
@@ -87,6 +102,36 @@ $jsState = [
                     <span x-show="!processing">Generate summary</span>
                     <span x-show="processing">Generating...</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- Duplicate / related coverage suggestion -->
+        <div class="duplicate-panel" x-show="duplicateSuggestion" x-cloak>
+            <div class="duplicate-panel__icon">&#9741;</div>
+            <div class="duplicate-panel__body">
+                <p class="duplicate-panel__title">Related coverage detected</p>
+                <p class="duplicate-panel__text">
+                    This article appears to cover the same story as:
+                    <strong x-text="duplicateSuggestion && duplicateSuggestion.parentHeadline"></strong>
+                </p>
+                <p class="duplicate-panel__meta">
+                    New article: <strong x-text="pending.outlet"></strong> &mdash;
+                    <a :href="pending.url" target="_blank" rel="noopener" x-text="pending.headline"></a>
+                </p>
+                <p class="duplicate-panel__hint">Add it as a &ldquo;More:&rdquo; link under the existing summary, or generate a full summary for it instead.</p>
+                <div class="duplicate-panel__actions">
+                    <button type="button" class="btn btn--secondary"
+                            @click="rejectDuplicate()"
+                            :disabled="processing">
+                        <span x-show="!processing">Generate full summary</span>
+                        <span x-show="processing" x-cloak>Generating...</span>
+                    </button>
+                    <button type="button" class="btn btn--primary"
+                            @click="acceptDuplicate()"
+                            :disabled="processing">
+                        Add as &ldquo;More:&rdquo; link
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -180,6 +225,22 @@ $jsState = [
                                     <button type="button" class="btn btn--secondary btn--small" @click="cancelEdit()">Cancel</button>
                                     <button type="button" class="btn btn--primary btn--small" @click="saveEdit(item.id)">Save edit</button>
                                 </div>
+                            </div>
+                            <!-- Related coverage ("More:" line) -->
+                            <div class="article-card__more" x-show="item.related && item.related.length > 0" x-cloak>
+                                <span class="article-card__more-label">More:</span>
+                                <template x-for="(r, ri) in item.related" :key="r.id">
+                                    <span>
+                                        <a :href="r.url" target="_blank" rel="noopener" class="article-card__more-link">
+                                            <span x-text="r.outlet"></span>: <span x-text="r.headline"></span>
+                                        </a>
+                                        <button x-show="status === 'draft'" type="button"
+                                                class="article-card__more-remove"
+                                                @click="deleteRelated(item.id, r.id)"
+                                                title="Remove this related link">&times;</button>
+                                        <span class="article-card__more-sep" x-show="ri < item.related.length - 1">|</span>
+                                    </span>
+                                </template>
                             </div>
                             <div class="article-card__actions" x-show="status === 'draft' && editingArticleId !== item.id">
                                 <button type="button" class="link-btn" @click="startEdit(item)">Edit</button>

@@ -56,6 +56,10 @@ function emptyPending() {
     };
 }
 
+function emptyDuplicateSuggestion() {
+    return null;
+}
+
 /**
  * Resize a textarea to match its content height.
  * Called on input and on initial mount.
@@ -88,6 +92,7 @@ function briefEditor(initial) {
         processingExec: false,
         showFallback: false,
         showReview: false,
+        duplicateSuggestion: null,
         fetchError: '',
         statusMessage: '',
         copied: false,
@@ -106,6 +111,7 @@ function briefEditor(initial) {
             this.pending = emptyPending();
             this.showFallback = false;
             this.showReview = false;
+            this.duplicateSuggestion = null;
             this.fetchError = '';
         },
 
@@ -154,21 +160,37 @@ function briefEditor(initial) {
             }
         },
 
-        async generateSummary(fromFallback) {
+        async generateSummary(fromFallback, skipDuplicateCheck) {
             if (!this.pending.headline || !this.pending.content) {
                 this.statusMessage = 'Headline and content required to generate a summary';
                 return;
             }
 
             this.processing = true;
-            this.statusMessage = 'Generating summary...';
+            this.statusMessage = this.briefId > 0 && !skipDuplicateCheck
+                ? 'Checking for related coverage...'
+                : 'Generating summary...';
 
             try {
                 const data = await apiPost('summarise.php', {
                     headline: this.pending.headline,
                     outlet: this.pending.outlet,
                     content: this.pending.content,
+                    brief_id: this.briefId,
+                    skip_duplicate_check: skipDuplicateCheck || false,
                 });
+
+                // Duplicate detected — show confirmation card instead of summary
+                if (data.duplicate) {
+                    this.duplicateSuggestion = {
+                        parentId: data.parent_id,
+                        parentHeadline: data.parent_headline,
+                    };
+                    this.showFallback = false;
+                    this.showReview = false;
+                    this.statusMessage = '';
+                    return;
+                }
 
                 this.pending.summary = data.summary;
                 this.pending.suggestedSection = data.suggested_section || '';
@@ -178,12 +200,57 @@ function briefEditor(initial) {
 
                 this.showFallback = false;
                 this.showReview = true;
+                this.duplicateSuggestion = null;
                 this.statusMessage = '';
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
             } finally {
                 this.processing = false;
             }
+        },
+
+        async acceptDuplicate() {
+            if (!this.duplicateSuggestion) return;
+            this.processing = true;
+            this.statusMessage = 'Adding related coverage...';
+            try {
+                const data = await apiPost('save_article.php', {
+                    brief_id: this.briefId,
+                    brief_date: this.briefDate,
+                    parent_article_id: this.duplicateSuggestion.parentId,
+                    url: this.pending.url,
+                    outlet_name: this.pending.outlet,
+                    headline: this.pending.headline,
+                    article_content: this.pending.content,
+                    summary: '',
+                    was_paywall_fallback: this.pending.was_paywall_fallback,
+                });
+
+                // Attach the related item to its parent in local state
+                const parent = this.articles.find(a => a.id === this.duplicateSuggestion.parentId);
+                if (parent) {
+                    parent.related = parent.related || [];
+                    parent.related.push({
+                        id: data.article_id,
+                        outlet: this.pending.outlet,
+                        headline: this.pending.headline,
+                        url: this.pending.url,
+                    });
+                }
+
+                this.urlInput = '';
+                this.resetPending();
+                this.statusMessage = 'Added as related coverage.';
+            } catch (err) {
+                this.statusMessage = 'Error: ' + err.message;
+            } finally {
+                this.processing = false;
+            }
+        },
+
+        rejectDuplicate() {
+            this.duplicateSuggestion = null;
+            this.generateSummary(this.pending.was_paywall_fallback, true);
         },
 
         async regenerateSummary() {
@@ -253,6 +320,7 @@ function briefEditor(initial) {
                     section_name: a.section_name,
                     section_slug: a.section_slug,
                     was_edited: !!a.was_edited,
+                    related: [],
                 });
 
                 this.urlInput = '';
@@ -299,7 +367,12 @@ function briefEditor(initial) {
         },
 
         async deleteArticle(articleId) {
-            if (!confirm('Remove this article from the brief?')) return;
+            const article = this.articles.find(a => a.id === articleId);
+            const hasRelated = article && article.related && article.related.length > 0;
+            const msg = hasRelated
+                ? 'Remove this article and its ' + article.related.length + ' related coverage link(s)?'
+                : 'Remove this article from the brief?';
+            if (!confirm(msg)) return;
             try {
                 await apiPost('delete_article.php', { article_id: articleId });
                 this.articles = this.articles.filter(a => a.id !== articleId);
@@ -307,6 +380,17 @@ function briefEditor(initial) {
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
             }
+        },
+
+        deleteRelated(parentId, relatedId) {
+            if (!confirm('Remove this related coverage link?')) return;
+            apiPost('delete_article.php', { article_id: relatedId }).then(() => {
+                const parent = this.articles.find(a => a.id === parentId);
+                if (parent) parent.related = parent.related.filter(r => r.id !== relatedId);
+                this.statusMessage = 'Related coverage removed.';
+            }).catch(err => {
+                this.statusMessage = 'Error: ' + err.message;
+            });
         },
 
         async generateExecutiveSummary() {

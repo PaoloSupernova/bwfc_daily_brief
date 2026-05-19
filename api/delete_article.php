@@ -23,7 +23,7 @@ if ($article === null) {
     api_error('Article not found', 404);
 }
 
-BriefRepository::deleteArticle($articleId);
+BriefRepository::deleteArticleWithChildren($articleId);
 
 AuditLog::record('article_deleted', 'article', $articleId, [
     'brief_id' => $article['brief_id'],

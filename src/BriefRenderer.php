@@ -112,19 +112,62 @@ final class BriefRenderer
         $h .= '<a href="' . $url . '" style="color: ' . self::BLUE . '; font-weight: bold; text-decoration: underline;">' . $headline . '</a>';
         $h .= '</div>';
         $h .= '<div style="font-size: 12pt; color: #333333; line-height: 1.45;">' . $summary . '</div>';
+
+        if (!empty($article['related'])) {
+            $links = [];
+            foreach ($article['related'] as $r) {
+                $ro = htmlspecialchars((string)$r['outlet_name'], ENT_QUOTES);
+                $rh = htmlspecialchars((string)$r['headline'], ENT_QUOTES);
+                $ru = htmlspecialchars((string)$r['url'], ENT_QUOTES);
+                $links[] = '<a href="' . $ru . '" style="color: ' . self::BLUE . '; text-decoration: underline;">' . $ro . ': ' . $rh . '</a>';
+            }
+            $h .= '<div style="font-size: 11pt; color: #555555; margin-top: 5px;">';
+            $h .= '<span style="font-weight: 700; color: ' . self::NAVY . ';">More:</span> ';
+            $h .= implode(' <span style="color: #BBBBBB; margin: 0 3px;">|</span> ', $links);
+            $h .= '</div>';
+        }
+
         $h .= '</div>';
         return $h;
     }
 
     private static function groupBySection(array $articles): array
     {
+        $nested = self::nestRelated($articles);
         $grouped = [];
-        foreach ($articles as $article) {
+        foreach ($nested as $article) {
             $sectionName = (string)$article['section_name'];
             $grouped[$sectionName] = $grouped[$sectionName] ?? [];
             $grouped[$sectionName][] = $article;
         }
         return $grouped;
+    }
+
+    /**
+     * Separate related-coverage children from parent articles and attach them
+     * as a 'related' key on their parent. Parents without children get related = [].
+     *
+     * @param array<int, array<string, mixed>> $articles
+     * @return array<int, array<string, mixed>>
+     */
+    private static function nestRelated(array $articles): array
+    {
+        $parents = [];
+        $children = [];
+
+        foreach ($articles as $article) {
+            if (!empty($article['parent_article_id'])) {
+                $pid = (int)$article['parent_article_id'];
+                $children[$pid][] = $article;
+            } else {
+                $parents[] = $article;
+            }
+        }
+
+        return array_map(function (array $article) use ($children): array {
+            $article['related'] = $children[(int)$article['id']] ?? [];
+            return $article;
+        }, $parents);
     }
 
     // ============================================================
@@ -158,12 +201,12 @@ final class BriefRenderer
             $lines[] = '';
 
             foreach ($items as $article) {
-                $outlet = trim((string)$article['outlet_name']);
-                $headline = trim((string)$article['headline']);
-                $summary = trim((string)$article['summary']);
-
-                $lines[] = "{$outlet}: {$headline}";
-                $lines[] = $summary;
+                $lines[] = trim((string)$article['outlet_name']) . ': ' . trim((string)$article['headline']);
+                $lines[] = trim((string)$article['summary']);
+                if (!empty($article['related'])) {
+                    $more = array_map(fn($r) => trim((string)$r['outlet_name']) . ': ' . trim((string)$r['headline']), $article['related']);
+                    $lines[] = 'More: ' . implode(' | ', $more);
+                }
                 $lines[] = '';
             }
         }
@@ -201,11 +244,17 @@ final class BriefRenderer
                 $outlet = trim((string)$article['outlet_name']);
                 $headline = trim((string)$article['headline']);
                 $url = trim((string)$article['url']);
-                $summary = trim((string)$article['summary']);
-
                 $lines[] = "{$outlet}: {$headline}";
                 if ($url !== '') $lines[] = $url;
-                $lines[] = $summary;
+                $lines[] = trim((string)$article['summary']);
+                if (!empty($article['related'])) {
+                    $more = array_map(function ($r) {
+                        $part = trim((string)$r['outlet_name']) . ': ' . trim((string)$r['headline']);
+                        $u = trim((string)$r['url']);
+                        return $u !== '' ? $part . ' - ' . $u : $part;
+                    }, $article['related']);
+                    $lines[] = 'More: ' . implode(' | ', $more);
+                }
                 $lines[] = '';
             }
         }
@@ -266,6 +315,10 @@ final class BriefRenderer
             .article-outlet { font-weight: bold; color: ' . self::NAVY . '; }
             .article-headline { color: ' . self::BLUE . '; font-weight: bold; text-decoration: underline; }
             .article-summary { color: #333333; line-height: 1.4; orphans: 3; widows: 3; }
+            .article-more { font-size: 9.5pt; color: #555555; margin-top: 4pt; }
+            .article-more-label { font-weight: 700; color: ' . self::NAVY . '; }
+            .article-more-link { color: ' . self::BLUE . '; text-decoration: underline; }
+            .article-more-sep { color: #BBBBBB; margin: 0 3pt; }
         </style></head><body>';
 
         if ($bannerHtml !== '') {
@@ -300,6 +353,20 @@ final class BriefRenderer
                 $html .= '<div class="article-head"><span class="article-outlet">' . $outlet . ':</span> ';
                 $html .= '<a href="' . $url . '" class="article-headline">' . $headline . '</a></div>';
                 $html .= '<div class="article-summary">' . $summary . '</div>';
+
+                if (!empty($article['related'])) {
+                    $links = [];
+                    foreach ($article['related'] as $r) {
+                        $ro = htmlspecialchars((string)$r['outlet_name'], ENT_QUOTES);
+                        $rh = htmlspecialchars((string)$r['headline'], ENT_QUOTES);
+                        $ru = htmlspecialchars((string)$r['url'], ENT_QUOTES);
+                        $links[] = '<a href="' . $ru . '" class="article-more-link">' . $ro . ': ' . $rh . '</a>';
+                    }
+                    $html .= '<div class="article-more"><span class="article-more-label">More:</span> ';
+                    $html .= implode(' <span class="article-more-sep">|</span> ', $links);
+                    $html .= '</div>';
+                }
+
                 $html .= '</div>';
             }
             $html .= '</div>';
