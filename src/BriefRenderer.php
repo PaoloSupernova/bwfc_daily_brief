@@ -72,7 +72,7 @@ final class BriefRenderer
         if (trim($summary) === '') return '';
 
         $h = '<div style="background: #F4F4F6; border-left: 4px solid ' . self::RED . '; padding: 16px 20px; margin-bottom: 24px;">';
-        $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 11pt; color: ' . self::NAVY . '; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Executive Summary</div>';
+        $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 11pt; color: ' . self::NAVY . '; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Summary</div>';
 
         $paragraphs = preg_split('/\n\s*\n/', trim($summary)) ?: [trim($summary)];
         foreach ($paragraphs as $p) {
@@ -185,7 +185,7 @@ final class BriefRenderer
 
         $execSummary = trim((string)($brief['executive_summary'] ?? ''));
         if ($execSummary !== '') {
-            $lines[] = 'EXECUTIVE SUMMARY';
+            $lines[] = 'SUMMARY';
             $lines[] = '';
             $paragraphs = preg_split('/\n\s*\n/', $execSummary) ?: [$execSummary];
             foreach ($paragraphs as $p) {
@@ -225,7 +225,7 @@ final class BriefRenderer
 
         $execSummary = trim((string)($brief['executive_summary'] ?? ''));
         if ($execSummary !== '') {
-            $lines[] = 'EXECUTIVE SUMMARY';
+            $lines[] = 'SUMMARY';
             $lines[] = '';
             $paragraphs = preg_split('/\n\s*\n/', $execSummary) ?: [$execSummary];
             foreach ($paragraphs as $p) {
@@ -305,6 +305,7 @@ final class BriefRenderer
             .banner img { width: 100%; display: block; }
             .header { background: ' . self::NAVY . '; color: #FFFFFF; padding: 14pt 22pt; border-bottom: 3pt solid ' . self::RED . '; text-align: center; margin-bottom: 16pt; }
             .header-title { font-family: nippo, Arial, sans-serif; font-size: 16pt; font-weight: bold; letter-spacing: 0.3pt; }
+            .click-note { font-size: 8.5pt; color: #777777; font-style: italic; text-align: right; padding: 4pt 22pt 10pt; }
             .exec-summary { background: #F4F4F6; padding: 14pt 18pt; margin: 0 22pt 20pt; border-left: 3pt solid ' . self::RED . '; page-break-inside: avoid; }
             .exec-summary-label { font-family: nippo, Arial, sans-serif; font-size: 9pt; font-weight: bold; color: ' . self::NAVY . '; letter-spacing: 1pt; margin-bottom: 6pt; }
             .exec-summary p { margin: 0 0 8pt; orphans: 3; widows: 3; }
@@ -327,9 +328,11 @@ final class BriefRenderer
 
         $html .= '<div class="header"><div class="header-title">DAILY BRIEF: ' . strtoupper(htmlspecialchars($date, ENT_QUOTES)) . '</div></div>';
 
+        $html .= '<div class="click-note">&#128279; Click any headline to read the full article online.</div>';
+
         $execSummary = trim((string)($brief['executive_summary'] ?? ''));
         if ($execSummary !== '') {
-            $html .= '<div class="exec-summary"><div class="exec-summary-label">EXECUTIVE SUMMARY</div>';
+            $html .= '<div class="exec-summary"><div class="exec-summary-label">SUMMARY</div>';
             $paragraphs = preg_split('/\n\s*\n/', $execSummary) ?: [$execSummary];
             foreach ($paragraphs as $p) {
                 $html .= '<p>' . nl2br(htmlspecialchars(trim($p), ENT_QUOTES)) . '</p>';
