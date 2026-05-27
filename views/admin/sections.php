@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 use BWFC\DailyBrief\BriefRepository;
 
+$basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+
 $sections = BriefRepository::sections(true);
 foreach ($sections as &$s) {
     $s['article_count'] = BriefRepository::countArticlesInSection((int)$s['id']);
@@ -19,6 +21,11 @@ $jsState = [
     ], $sections)),
 ];
 ?>
+<nav class="admin-subnav">
+    <a href="<?= $basePath ?>/?admin=sections" class="admin-subnav__link is-active">Sections</a>
+    <a href="<?= $basePath ?>/?admin=export"   class="admin-subnav__link">Export data</a>
+</nav>
+
 <div class="admin" x-data="sectionsAdmin(<?= htmlspecialchars(json_encode($jsState), ENT_QUOTES) ?>)">
     <header class="admin__header">
         <h1 class="heading-display">Sections</h1>

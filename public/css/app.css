@@ -846,8 +846,31 @@ code {
 .archive-table tr:last-child td { border-bottom: none; }
 
 /* ============================================================
-   ADMIN (sections page)
+   ADMIN (sections page + export page)
    ============================================================ */
+
+/* Sub-navigation tabs */
+.admin-subnav {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 32px;
+}
+.admin-subnav__link {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.admin-subnav__link:hover { color: var(--bwfc-navy); }
+.admin-subnav__link.is-active {
+    color: var(--bwfc-blue);
+    border-bottom-color: var(--bwfc-blue);
+}
 
 .admin__header { margin-bottom: 24px; }
 
@@ -1953,4 +1976,122 @@ code {
     .dash__hero { flex-direction: column; align-items: flex-start; padding: 24px; }
     .dash__stats { grid-template-columns: 1fr 1fr; }
     .stat-card__value { font-size: 28px; }
+}
+
+/* ============================================================
+   EXPORT PAGE
+   ============================================================ */
+
+.export-card {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    max-width: 640px;
+}
+.export-card__icon { font-size: 40px; flex-shrink: 0; line-height: 1; }
+.export-card__title { font-size: 18px; font-weight: 700; color: var(--bwfc-navy); margin: 0 0 12px; }
+.export-card__list {
+    margin: 0 0 20px;
+    padding-left: 18px;
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.export-card__list li { margin-bottom: 2px; }
+
+.export-loading {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 28px 0;
+    color: var(--ink-muted);
+    font-size: 15px;
+}
+.export-loading__spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--bwfc-blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.export-download-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 20px 24px;
+    background: #EEF4FF;
+    border: 1px solid #B8D0F8;
+    border-radius: var(--radius);
+    margin-bottom: 28px;
+}
+.export-download-bar__note { font-size: 13px; color: var(--ink-muted); }
+
+.export-summary { margin-bottom: 28px; }
+
+.export-table {
+    width: 100%;
+    max-width: 560px;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 12px;
+}
+.export-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+}
+.export-table th.export-table__num { text-align: right; }
+.export-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--ink);
+    vertical-align: middle;
+}
+.export-table__num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.export-table__divider td {
+    padding: 0;
+    height: 6px;
+    background: var(--surface-muted);
+    border-bottom: 1px solid var(--border);
+}
+.export-table__subtotal td { font-weight: 600; color: var(--bwfc-navy); }
+.export-table__total td {
+    font-weight: 700;
+    color: var(--bwfc-navy);
+    background: var(--surface-muted);
+}
+.export-table__group td:first-child { font-weight: 600; }
+
+.export-cli-hint {
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-size: 13px;
+    color: var(--ink-muted);
+    max-width: 560px;
+}
+.export-cli-hint strong { color: var(--ink); }
+.export-cli-hint__code {
+    background: var(--bwfc-navy);
+    color: #e8f0fe;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin: 8px 0;
+    overflow-x: auto;
 }

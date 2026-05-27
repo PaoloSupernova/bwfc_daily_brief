@@ -31,6 +31,10 @@ if ($admin !== null) {
             $view = VIEWS_PATH . '/admin/sections.php';
             $pageTitle = 'Admin - Sections';
             break;
+        case 'export':
+            $view = VIEWS_PATH . '/admin/export.php';
+            $pageTitle = 'Admin - Export Data';
+            break;
         default:
             $view = VIEWS_PATH . '/admin/index.php';
             $pageTitle = 'Admin';

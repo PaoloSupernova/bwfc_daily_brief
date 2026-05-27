@@ -41,7 +41,7 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 <a href="<?= $basePath ?>/" class="site-nav__link">Dashboard</a>
                 <a href="<?= $basePath ?>/?brief=new" class="site-nav__link site-nav__link--primary">New Brief</a>
                 <a href="<?= $basePath ?>/?archive=1" class="site-nav__link">Archive</a>
-                <a href="<?= $basePath ?>/?admin=sections" class="site-nav__link">Admin</a>
+                <a href="<?= $basePath ?>/?admin=sections" class="site-nav__link <?= (($admin ?? '') !== '') ? 'is-active' : '' ?>">Admin</a>
                 <?php if ($user !== null): ?>
                     <span class="site-nav__user"><?= htmlspecialchars($user['name'], ENT_QUOTES) ?></span>
                 <?php endif; ?>
