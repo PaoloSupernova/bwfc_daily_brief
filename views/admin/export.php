@@ -51,10 +51,19 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 
         <div x-show="state === 'done'" x-cloak>
 
+            <!-- SQL-only fallback notice -->
+            <div class="notice notice--warning" x-show="mode === 'sql'" x-cloak style="margin-bottom:16px;">
+                <strong>ZIP extension not enabled.</strong>
+                Your export contains the database SQL only — banner images and config template are not included.
+                To get the full ZIP export, open <code>C:\xampp\php\php.ini</code>, find <code>;extension=zip</code>,
+                remove the <code>;</code>, then restart Apache.
+            </div>
+
             <!-- Download button -->
             <div class="export-download-bar">
                 <a :href="downloadUrl" class="btn btn--primary btn--large" download>
-                    &#11015; Download ZIP
+                    <span x-show="mode === 'zip'">&#11015; Download ZIP</span>
+                    <span x-show="mode === 'sql'" x-cloak>&#11015; Download SQL</span>
                 </a>
                 <span class="export-download-bar__note">
                     Link is valid for 1 hour &middot; <button type="button" class="btn btn--link" @click="reset()">Generate another</button>
@@ -164,6 +173,7 @@ function exportAdmin() {
         errorMessage: '',
         summary: {},
         downloadUrl: '',
+        mode: 'zip',
 
         init() {},
 
@@ -180,6 +190,7 @@ function exportAdmin() {
                 }
                 this.summary     = data.summary;
                 this.downloadUrl = data.download_url;
+                this.mode        = data.mode || 'zip';
                 this.state       = 'done';
             } catch (err) {
                 this.errorMessage = err.message;

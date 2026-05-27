@@ -364,6 +364,23 @@ code {
 .status-pill--draft { background: #FFF3D6; color: #8A6500; }
 .status-pill--sent { background: #D7F0DC; color: #1E5D2C; }
 
+/* ---------- Sentiment badge ---------- */
+.sentiment-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+.sentiment-badge--positive { background: #D7F0DC; color: #1E5D2C; }
+.sentiment-badge--neutral  { background: #EBEBEB; color: #555555; }
+.sentiment-badge--negative { background: #FCE8E8; color: #8C1A1A; }
+
 /* ---------- Buttons ---------- */
 .btn {
     display: inline-flex;

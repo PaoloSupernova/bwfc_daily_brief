@@ -14,6 +14,7 @@ function archiveScreen(initial) {
             dateFrom: '',
             dateTo: '',
             status: '',
+            sentiment: '',
         },
         showAllOutlets: false,
         datePresets: [
@@ -38,6 +39,7 @@ function archiveScreen(initial) {
             sections: [],
             outlets: [],
             status: { sent: 0, draft: 0 },
+            sentiment: { positive: 0, neutral: 0, negative: 0 },
         },
 
         // ------ initial seed (for sidebar before first load) ------
@@ -57,6 +59,7 @@ function archiveScreen(initial) {
                 date_from: dates.from,
                 date_to: dates.to,
                 status: this.filters.status,
+                sentiment: this.filters.sentiment,
                 page: this.page,
                 per_page: this.perPage,
             };
@@ -68,7 +71,7 @@ function archiveScreen(initial) {
                 this.totalPages = data.total_pages;
                 this.results = data.results || [];
                 this.groups = data.groups || [];
-                this.facets = data.facets || { sections: [], outlets: [], status: { sent: 0, draft: 0 } };
+                this.facets = data.facets || { sections: [], outlets: [], status: { sent: 0, draft: 0 }, sentiment: { positive: 0, neutral: 0, negative: 0 } };
             } catch (err) {
                 console.error('Archive search failed:', err);
             } finally {
@@ -156,6 +159,11 @@ function archiveScreen(initial) {
             }
         },
 
+        toggleSentiment(val) {
+            this.filters.sentiment = this.filters.sentiment === val ? '' : val;
+            this.resetAndLoad();
+        },
+
         resetFilters() {
             this.filters = {
                 query: '',
@@ -165,6 +173,7 @@ function archiveScreen(initial) {
                 dateFrom: '',
                 dateTo: '',
                 status: '',
+                sentiment: '',
             };
             this.resetAndLoad();
         },
@@ -174,7 +183,8 @@ function archiveScreen(initial) {
                 || this.filters.sections.length > 0
                 || this.filters.outlets.length > 0
                 || this.filters.datePreset !== 'all'
-                || this.filters.status !== '';
+                || this.filters.status !== ''
+                || this.filters.sentiment !== '';
         },
 
         visibleOutlets() {

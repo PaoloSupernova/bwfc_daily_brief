@@ -37,5 +37,7 @@ AuditLog::record('data_exported', 'system', null, [
 
 api_success([
     'summary'      => $result['summary'],
+    'mode'         => $result['mode'],
+    'zip_available'=> \BWFC\DailyBrief\Exporter::zipAvailable(),
     'download_url' => $root . '/api/export_download.php?key=' . $key,
 ]);

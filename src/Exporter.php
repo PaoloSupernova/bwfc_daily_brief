@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace BWFC\DailyBrief;
 
 use RuntimeException;
-use ZipArchive;
 
 /**
  * Exports the full application state (database + assets + config template)
@@ -38,24 +37,47 @@ final class Exporter
     // Public API
     // ----------------------------------------------------------------
 
+    public static function zipAvailable(): bool
+    {
+        return class_exists('ZipArchive');
+    }
+
     /**
      * Generate the export ZIP and return the path + summary stats.
+     * Falls back to SQL-only if ZipArchive is unavailable.
      *
-     * @return array{ path: string, filename: string, summary: array<string, mixed> }
+     * @return array{ path: string, filename: string, mode: string, summary: array<string, mixed> }
      */
     public function generate(): array
     {
         $summary = $this->collectSummary();
-        $zipPath = $this->buildZip($summary);
 
-        $summary['zip_size'] = filesize($zipPath);
-        $summary['zip_path'] = $zipPath;
+        if (self::zipAvailable()) {
+            $path = $this->buildZip($summary);
+            $mode = 'zip';
+        } else {
+            $path = $this->buildSqlFile();
+            $mode = 'sql';
+        }
+
+        $summary['zip_size'] = filesize($path);
 
         return [
-            'path'     => $zipPath,
-            'filename' => basename($zipPath),
+            'path'     => $path,
+            'filename' => basename($path),
+            'mode'     => $mode,
             'summary'  => $summary,
         ];
+    }
+
+    /**
+     * Generate just the SQL data file (fallback when ZipArchive unavailable).
+     */
+    private function buildSqlFile(): string
+    {
+        $path = sys_get_temp_dir() . '/bwfc-data-' . date('Y-m-d') . '.sql';
+        file_put_contents($path, $this->buildDataSql());
+        return $path;
     }
 
     // ----------------------------------------------------------------

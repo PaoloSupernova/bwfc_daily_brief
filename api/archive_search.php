@@ -28,19 +28,21 @@ use BWFC\DailyBrief\Database;
 
 $input = api_input();
 $query = trim((string)($input['query'] ?? ''));
-$sections = is_array($input['sections'] ?? null) ? array_values(array_filter(array_map('strval', $input['sections']))) : [];
-$outlets = is_array($input['outlets'] ?? null) ? array_values(array_filter(array_map('strval', $input['outlets']))) : [];
-$dateFrom = trim((string)($input['date_from'] ?? ''));
-$dateTo = trim((string)($input['date_to'] ?? ''));
-$status = trim((string)($input['status'] ?? ''));
-$page = max(1, (int)($input['page'] ?? 1));
-$perPage = min(100, max(1, (int)($input['per_page'] ?? 20)));
-$offset = ($page - 1) * $perPage;
+$sections  = is_array($input['sections'] ?? null) ? array_values(array_filter(array_map('strval', $input['sections']))) : [];
+$outlets   = is_array($input['outlets'] ?? null) ? array_values(array_filter(array_map('strval', $input['outlets']))) : [];
+$dateFrom  = trim((string)($input['date_from'] ?? ''));
+$dateTo    = trim((string)($input['date_to'] ?? ''));
+$status    = trim((string)($input['status'] ?? ''));
+$sentiment = trim((string)($input['sentiment'] ?? ''));
+$page      = max(1, (int)($input['page'] ?? 1));
+$perPage   = min(100, max(1, (int)($input['per_page'] ?? 20)));
+$offset    = ($page - 1) * $perPage;
 
-// Validate dates (skip silently if malformed)
+// Validate
 if ($dateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = '';
-if ($dateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) $dateTo = '';
-if ($status !== '' && !in_array($status, ['sent', 'draft'], true)) $status = '';
+if ($dateTo   !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo))   $dateTo   = '';
+if ($status   !== '' && !in_array($status,    ['sent', 'draft'],                       true)) $status    = '';
+if ($sentiment !== '' && !in_array($sentiment, ['positive', 'neutral', 'negative'],    true)) $sentiment = '';
 
 // ============================================================
 // Build the WHERE clause for both search and list modes
@@ -83,6 +85,11 @@ if (count($outlets) > 0) {
     $where[] = 'EXISTS (SELECT 1 FROM brief_articles ba WHERE ba.brief_id = b.id AND ba.outlet_name IN (' . implode(',', $placeholders) . '))';
 }
 
+if ($sentiment !== '') {
+    $where[] = 'EXISTS (SELECT 1 FROM brief_articles ba WHERE ba.brief_id = b.id AND ba.sentiment = :sentiment)';
+    $params['sentiment'] = $sentiment;
+}
+
 $whereSql = implode(' AND ', $where);
 
 // ============================================================
@@ -123,6 +130,7 @@ if ($query !== '') {
             a.summary,
             a.url,
             a.outlet_name,
+            a.sentiment,
             s.name AS section_name,
             s.slug AS section_slug,
             b.brief_date,
@@ -287,7 +295,7 @@ function archive_facets(array $where, array $params): array
         $params
     );
 
-    // Status counts (run two simple queries, no joins)
+    // Status counts
     $sentRow = Database::selectOne(
         "SELECT COUNT(*) AS n FROM briefs b WHERE {$whereSql} AND b.status = 'sent'",
         $params
@@ -296,6 +304,22 @@ function archive_facets(array $where, array $params): array
         "SELECT COUNT(*) AS n FROM briefs b WHERE {$whereSql} AND b.status = 'draft'",
         $params
     );
+
+    // Sentiment counts (articles with a tagged sentiment in matching briefs)
+    $sentimentRows = Database::select(
+        "SELECT a.sentiment, COUNT(*) AS n
+         FROM brief_articles a
+         JOIN briefs b ON b.id = a.brief_id
+         WHERE {$whereSql} AND a.sentiment IS NOT NULL AND a.parent_article_id IS NULL
+         GROUP BY a.sentiment",
+        $params
+    );
+    $sentimentCounts = ['positive' => 0, 'neutral' => 0, 'negative' => 0];
+    foreach ($sentimentRows as $r) {
+        if (isset($sentimentCounts[$r['sentiment']])) {
+            $sentimentCounts[$r['sentiment']] = (int)$r['n'];
+        }
+    }
 
     return [
         'sections' => array_map(fn($r) => [
@@ -308,8 +332,9 @@ function archive_facets(array $where, array $params): array
             'count' => (int)$r['n'],
         ], $outletRows),
         'status' => [
-            'sent' => (int)($sentRow['n'] ?? 0),
+            'sent'  => (int)($sentRow['n']  ?? 0),
             'draft' => (int)($draftRow['n'] ?? 0),
         ],
+        'sentiment' => $sentimentCounts,
     ];
 }

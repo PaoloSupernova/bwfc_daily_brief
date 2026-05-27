@@ -117,13 +117,20 @@ final class BriefRepository
             ? (int)$data['parent_article_id']
             : null;
 
+        $sentiment = $data['sentiment'] ?? null;
+        if (!in_array($sentiment, ['positive', 'neutral', 'negative'], true)) {
+            $sentiment = null;
+        }
+
         return Database::insert(
             'INSERT INTO brief_articles
                 (brief_id, section_id, display_order, url, outlet_name, headline,
-                 article_content, summary, summary_original, was_paywall_fallback, parent_article_id)
+                 article_content, summary, summary_original, was_paywall_fallback,
+                 parent_article_id, sentiment)
              VALUES
                 (:brief_id, :section_id, :display_order, :url, :outlet_name, :headline,
-                 :article_content, :summary, :summary_original, :was_paywall_fallback, :parent_article_id)',
+                 :article_content, :summary, :summary_original, :was_paywall_fallback,
+                 :parent_article_id, :sentiment)',
             [
                 'brief_id' => $briefId,
                 'section_id' => (int)$data['section_id'],
@@ -136,6 +143,7 @@ final class BriefRepository
                 'summary_original' => $data['summary_original'] ?? ($data['summary'] ?? ''),
                 'was_paywall_fallback' => !empty($data['was_paywall_fallback']) ? 1 : 0,
                 'parent_article_id' => $parentId,
+                'sentiment' => $sentiment,
             ]
         );
     }

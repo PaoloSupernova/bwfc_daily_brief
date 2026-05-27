@@ -35,6 +35,7 @@ $jsState = [
         'summary' => (string)$a['summary'],
         'section_name' => (string)$a['section_name'],
         'section_slug' => (string)$a['section_slug'],
+        'sentiment' => (string)($a['sentiment'] ?? ''),
         'was_edited' => (bool)$a['was_edited'],
         'related' => $relatedByParent[(int)$a['id']] ?? [],
     ], array_filter($articles, fn($a) => empty($a['parent_article_id'])))),
@@ -137,7 +138,14 @@ $jsState = [
 
         <div class="review-panel" x-show="showReview" x-cloak>
             <div class="review-panel__meta">
-                <div class="review-panel__outlet"><strong x-text="pending.outlet"></strong></div>
+                <div class="review-panel__outlet">
+                    <strong x-text="pending.outlet"></strong>
+                    <span class="sentiment-badge"
+                          x-show="pending.sentiment"
+                          :class="'sentiment-badge--' + pending.sentiment"
+                          x-text="pending.sentiment"
+                          x-cloak></span>
+                </div>
                 <div class="review-panel__headline" x-text="pending.headline"></div>
                 <a class="review-panel__link" x-show="pending.url" :href="pending.url" target="_blank" rel="noopener" x-text="pending.url"></a>
             </div>
@@ -211,7 +219,14 @@ $jsState = [
                     <template x-for="item in group.items" :key="item.id">
                         <article class="article-card" :class="{ 'is-editing': editingArticleId === item.id }">
                             <div class="article-card__head">
-                                <div class="article-card__outlet" x-text="item.outlet"></div>
+                                <div class="article-card__outlet">
+                                    <span x-text="item.outlet"></span>
+                                    <span class="sentiment-badge"
+                                          x-show="item.sentiment"
+                                          :class="'sentiment-badge--' + item.sentiment"
+                                          x-text="item.sentiment"
+                                          x-cloak></span>
+                                </div>
                                 <div class="article-card__headline">
                                     <a :href="item.url" target="_blank" rel="noopener" x-text="item.headline"></a>
                                 </div>

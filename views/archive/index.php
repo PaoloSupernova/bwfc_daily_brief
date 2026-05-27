@@ -90,6 +90,34 @@ $jsState = [
                 <p class="archive__filter-empty" x-show="facets.sections.length === 0" x-cloak>No section data yet</p>
             </div>
 
+            <div class="archive__filter-group" x-show="facets.sentiment && (facets.sentiment.positive > 0 || facets.sentiment.neutral > 0 || facets.sentiment.negative > 0)" x-cloak>
+                <h3 class="archive__filter-heading">Sentiment</h3>
+                <button type="button" class="filter-row"
+                        :class="{ 'is-active': filters.sentiment === 'positive' }"
+                        @click="toggleSentiment('positive')">
+                    <span>
+                        <span class="sentiment-badge sentiment-badge--positive">Positive</span>
+                    </span>
+                    <span class="filter-row__count" x-text="facets.sentiment ? (facets.sentiment.positive || 0) : 0"></span>
+                </button>
+                <button type="button" class="filter-row"
+                        :class="{ 'is-active': filters.sentiment === 'neutral' }"
+                        @click="toggleSentiment('neutral')">
+                    <span>
+                        <span class="sentiment-badge sentiment-badge--neutral">Neutral</span>
+                    </span>
+                    <span class="filter-row__count" x-text="facets.sentiment ? (facets.sentiment.neutral || 0) : 0"></span>
+                </button>
+                <button type="button" class="filter-row"
+                        :class="{ 'is-active': filters.sentiment === 'negative' }"
+                        @click="toggleSentiment('negative')">
+                    <span>
+                        <span class="sentiment-badge sentiment-badge--negative">Negative</span>
+                    </span>
+                    <span class="filter-row__count" x-text="facets.sentiment ? (facets.sentiment.negative || 0) : 0"></span>
+                </button>
+            </div>
+
             <div class="archive__filter-group">
                 <h3 class="archive__filter-heading">Outlets</h3>
                 <template x-for="(outlet, idx) in visibleOutlets()" :key="outlet.name">
@@ -153,6 +181,11 @@ $jsState = [
                             <span class="search-hit__date" x-text="formatDate(hit.brief_date)"></span>
                             <span class="search-hit__section" x-text="hit.section_name"></span>
                             <span class="search-hit__outlet" x-text="hit.outlet_name"></span>
+                            <span class="sentiment-badge"
+                                  x-show="hit.sentiment"
+                                  :class="'sentiment-badge--' + hit.sentiment"
+                                  x-text="hit.sentiment"
+                                  x-cloak></span>
                         </div>
                         <h3 class="search-hit__headline">
                             <a :href="hit.url" target="_blank" rel="noopener" x-html="highlight(hit.headline)"></a>

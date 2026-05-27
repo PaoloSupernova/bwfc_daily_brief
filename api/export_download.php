@@ -41,7 +41,8 @@ if (!file_exists($path)) {
 // Consume the key — one download only
 unset($_SESSION['export_keys'][$key]);
 
-header('Content-Type: application/zip');
+$isSql = str_ends_with($filename, '.sql');
+header('Content-Type: ' . ($isSql ? 'application/sql' : 'application/zip'));
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Length: ' . filesize($path));
 header('Cache-Control: no-store, no-cache');

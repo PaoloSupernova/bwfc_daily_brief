@@ -58,6 +58,9 @@ if (BriefRepository::isLocked($briefId)) {
     api_error('Brief is sent and locked', 423);
 }
 
+$rawSentiment = strtolower(trim((string)($input['sentiment'] ?? '')));
+$sentiment = in_array($rawSentiment, ['positive', 'neutral', 'negative'], true) ? $rawSentiment : null;
+
 $articleId = BriefRepository::addArticle($briefId, [
     'section_id' => (int)$section['id'],
     'url' => (string)($input['url'] ?? ''),
@@ -68,6 +71,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary_original' => (string)($input['summary_original'] ?? ($input['summary'] ?? '')),
     'was_paywall_fallback' => !empty($input['was_paywall_fallback']),
     'parent_article_id' => $parentArticleId,
+    'sentiment' => $sentiment,
 ]);
 
 AuditLog::record('article_added', 'article', $articleId, [

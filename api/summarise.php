@@ -49,20 +49,23 @@ if ($briefId > 0 && !$skipDuplicateCheck) {
     }
 }
 
-$summary = $summariser->summariseArticle($headline, $outlet, $content);
-$section = $summariser->suggestSection($headline, $outlet, $content);
+$summary   = $summariser->summariseArticle($headline, $outlet, $content);
+$section   = $summariser->suggestSection($headline, $outlet, $content);
+$sentiment = $summariser->classifySentiment($headline, $summary);
 
 $violations = StyleGuard::check($summary);
 
 AuditLog::record('article_summary_generated', 'article', null, [
-    'outlet' => $outlet,
-    'headline' => $headline,
+    'outlet'            => $outlet,
+    'headline'          => $headline,
     'suggested_section' => $section,
-    'style_violations' => count($violations['violations']),
+    'sentiment'         => $sentiment,
+    'style_violations'  => count($violations['violations']),
 ]);
 
 api_success([
-    'summary' => $summary,
-    'suggested_section' => $section,
-    'style_check' => $violations,
+    'summary'          => $summary,
+    'suggested_section'=> $section,
+    'sentiment'        => $sentiment,
+    'style_check'      => $violations,
 ]);

@@ -94,6 +94,36 @@ PROMPT;
         return $this->claude->complete($prompt);
     }
 
+    /**
+     * Classify the sentiment of a generated summary in the context of Bolton Wanderers.
+     * Returns 'positive', 'neutral', or 'negative'.
+     */
+    public function classifySentiment(string $headline, string $summary): string
+    {
+        $prompt = <<<PROMPT
+You are classifying the sentiment of a news article summary for Bolton Wanderers Football Club.
+
+Headline: {$headline}
+Summary: {$summary}
+
+From the perspective of Bolton Wanderers Football Club, is this article POSITIVE, NEUTRAL, or NEGATIVE?
+
+- POSITIVE: good news for the club (win, signing, community event, positive profile, award)
+- NEGATIVE: bad news for the club (defeat, injury, controversy, criticism, legal issue)
+- NEUTRAL: factual/informational with no clear positive or negative impact on the club
+
+Reply with ONE word only: POSITIVE, NEUTRAL, or NEGATIVE
+PROMPT;
+
+        $raw = strtoupper(trim($this->claude->complete($prompt)));
+
+        return match($raw) {
+            'POSITIVE' => 'positive',
+            'NEGATIVE' => 'negative',
+            default    => 'neutral',
+        };
+    }
+
     public function suggestSection(string $headline, string $outlet, string $content): string
     {
         $sections = BriefRepository::sections(true);
