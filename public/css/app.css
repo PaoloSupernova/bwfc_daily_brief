@@ -1838,6 +1838,57 @@ code {
     margin: 0;
 }
 
+/* ---------- Sentiment bar chart (dashboard panel) ---------- */
+.sentiment-bars { display: flex; flex-direction: column; gap: 14px; padding: 8px 0 0; }
+
+.sentiment-bars__row {
+    display: grid;
+    grid-template-columns: 90px 1fr 36px 46px;
+    align-items: center;
+    gap: 10px;
+}
+
+.sentiment-bars__label { display: flex; align-items: center; }
+
+.sentiment-bars__track {
+    height: 10px;
+    background: #EBEBEB;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.sentiment-bars__fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.5s ease;
+    min-width: 2px;
+}
+
+.sentiment-bars__fill--positive { background: #2E8B57; }
+.sentiment-bars__fill--neutral  { background: #999999; }
+.sentiment-bars__fill--negative { background: #C0392B; }
+
+.sentiment-bars__count {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--bwfc-navy);
+    text-align: right;
+}
+
+.sentiment-bars__pct {
+    font-size: 12px;
+    color: var(--ink-subtle);
+    text-align: right;
+}
+
+.sentiment-bars__footer {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--ink-subtle);
+    border-top: 1px solid #EBEBEB;
+    padding-top: 12px;
+}
+
 .dash__caption {
     font-size: 11px;
     color: var(--ink-subtle);
@@ -1998,6 +2049,20 @@ code {
 /* ============================================================
    EXPORT PAGE
    ============================================================ */
+
+/* ---------- Notice banners ---------- */
+.notice {
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+    border-left: 4px solid currentColor;
+    margin-bottom: 16px;
+}
+.notice--warning  { background: #FFF8E1; color: #7A5800; border-color: #F5A623; }
+.notice--error    { background: #FDF3F3; color: #8C1A1A; border-color: #C0392B; }
+.notice--success  { background: #EAF7EE; color: #1E5D2C; border-color: #2E8B57; }
+.notice--info     { background: #EEF4FF; color: #1E3A8A; border-color: #3B82F6; }
 
 .export-card {
     display: flex;

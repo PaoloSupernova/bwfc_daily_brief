@@ -305,7 +305,7 @@ final class BriefRenderer
             .banner img { width: 100%; display: block; }
             .header { background: ' . self::NAVY . '; color: #FFFFFF; padding: 14pt 22pt; border-bottom: 3pt solid ' . self::RED . '; text-align: center; margin-bottom: 16pt; }
             .header-title { font-family: nippo, Arial, sans-serif; font-size: 16pt; font-weight: bold; letter-spacing: 0.3pt; }
-            .click-note { font-size: 8.5pt; color: #777777; font-style: italic; text-align: right; padding: 4pt 22pt 10pt; }
+            .click-note { font-size: 10pt; color: #444444; font-style: italic; text-align: right; padding: 4pt 22pt 12pt; }
             .exec-summary { background: #F4F4F6; padding: 14pt 18pt; margin: 0 22pt 20pt; border-left: 3pt solid ' . self::RED . '; page-break-inside: avoid; }
             .exec-summary-label { font-family: nippo, Arial, sans-serif; font-size: 9pt; font-weight: bold; color: ' . self::NAVY . '; letter-spacing: 1pt; margin-bottom: 6pt; }
             .exec-summary p { margin: 0 0 8pt; orphans: 3; widows: 3; }

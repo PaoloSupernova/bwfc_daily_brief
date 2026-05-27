@@ -12,6 +12,7 @@ function dashboardScreen() {
         sectionShare: [],
         topOutlets: [],
         localVsNational: { local: 0, national: 0 },
+        sentimentData: { positive: 0, neutral: 0, negative: 0 },
         wordCloud: [],
         recentBriefs: [],
 
@@ -30,6 +31,7 @@ function dashboardScreen() {
                 this.sectionShare = data.section_share || [];
                 this.topOutlets = data.top_outlets || [];
                 this.localVsNational = data.local_vs_national || { local: 0, national: 0 };
+                this.sentimentData = data.sentiment || { positive: 0, neutral: 0, negative: 0 };
                 this.wordCloud = data.word_cloud || [];
                 this.recentBriefs = data.recent_briefs || [];
 
@@ -381,6 +383,16 @@ function dashboardScreen() {
         briefUrl(briefId) {
             const base = window.BWFC_BASE || '';
             return base + '/?brief=' + briefId;
+        },
+
+        sentimentTotal() {
+            return this.sentimentData.positive + this.sentimentData.neutral + this.sentimentData.negative;
+        },
+
+        sentimentPct(n) {
+            const total = this.sentimentTotal();
+            if (total === 0) return 0;
+            return Math.round((n / total) * 100);
         },
     };
 }

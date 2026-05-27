@@ -215,6 +215,26 @@ $wordFreq = compute_word_frequencies(
 );
 
 // ============================================================
+// SENTIMENT BREAKDOWN (standalone articles only)
+// ============================================================
+
+$sentimentRows = Database::select(
+    "SELECT a.sentiment, COUNT(*) AS n
+     FROM brief_articles a
+     JOIN briefs b ON b.id = a.brief_id
+     WHERE b.deleted_at IS NULL AND b.brief_date >= :start
+       AND a.sentiment IS NOT NULL AND a.parent_article_id IS NULL
+     GROUP BY a.sentiment",
+    ['start' => $rangeStart]
+);
+$sentimentCounts = ['positive' => 0, 'neutral' => 0, 'negative' => 0];
+foreach ($sentimentRows as $r) {
+    if (isset($sentimentCounts[$r['sentiment']])) {
+        $sentimentCounts[$r['sentiment']] = (int)$r['n'];
+    }
+}
+
+// ============================================================
 // RECENT BRIEFS (sidebar)
 // ============================================================
 
@@ -243,6 +263,7 @@ api_success([
     'local_vs_national' => $localVsNational,
     'word_cloud' => $wordFreq,
     'recent_briefs' => $recent,
+    'sentiment' => $sentimentCounts,
 ]);
 
 // ============================================================

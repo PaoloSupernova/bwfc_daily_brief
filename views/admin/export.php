@@ -164,7 +164,68 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
         </div>
 
     </section>
+
+    <!-- Sentiment backfill -->
+    <section class="editor__section" x-data="backfillSentiment()">
+        <h2 class="heading-section">Sentiment backfill</h2>
+        <p class="field__hint">
+            Articles added before sentiment tagging was enabled have no tag. Run this once to classify all existing articles
+            using Claude. May take 1–3 minutes depending on archive size.
+        </p>
+
+        <div x-show="bfState === 'idle'">
+            <button type="button" class="btn btn--secondary" @click="run()">
+                Tag untagged articles
+            </button>
+        </div>
+
+        <div class="export-loading" x-show="bfState === 'loading'" x-cloak>
+            <div class="export-loading__spinner"></div>
+            <p>Classifying articles&hellip; please keep this page open.</p>
+        </div>
+
+        <div class="notice notice--success" x-show="bfState === 'done'" x-cloak>
+            <strong>Done.</strong>
+            Tagged <strong x-text="bfResult.processed"></strong> articles
+            <template x-if="bfResult.skipped > 0">
+                <span> (<span x-text="bfResult.skipped"></span> skipped — no headline/summary)</span>
+            </template>.
+            Reload the dashboard to see updated sentiment charts.
+        </div>
+
+        <div class="notice notice--error" x-show="bfState === 'error'" x-cloak>
+            <strong>Failed:</strong> <span x-text="bfError"></span>
+        </div>
+    </section>
 </div>
+
+<script>
+function backfillSentiment() {
+    return {
+        bfState: 'idle',
+        bfResult: {},
+        bfError: '',
+
+        async run() {
+            if (!confirm('This will call Claude once for every untagged article. Continue?')) return;
+            this.bfState = 'loading';
+            this.bfError = '';
+            try {
+                const base = window.BWFC_BASE || '';
+                const root = base.replace(/\/public\/?$/, '');
+                const res  = await fetch(root + '/api/admin_backfill_sentiment.php', { method: 'POST' });
+                const data = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
+                if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+                this.bfResult = data;
+                this.bfState  = 'done';
+            } catch (err) {
+                this.bfError = err.message;
+                this.bfState = 'error';
+            }
+        },
+    };
+}
+</script>
 
 <script>
 function exportAdmin() {

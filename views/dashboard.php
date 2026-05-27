@@ -115,6 +115,52 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             </div>
 
             <div class="dash__panel">
+                <h2 class="heading-section">Sentiment breakdown</h2>
+                <p class="dash__panel-hint" x-show="sentimentTotal() === 0" x-cloak>
+                    No sentiment data in this window yet. Articles added going forward will be tagged automatically.
+                </p>
+                <div class="sentiment-bars" x-show="sentimentTotal() > 0" x-cloak>
+                    <div class="sentiment-bars__row">
+                        <span class="sentiment-bars__label">
+                            <span class="sentiment-badge sentiment-badge--positive">Positive</span>
+                        </span>
+                        <div class="sentiment-bars__track">
+                            <div class="sentiment-bars__fill sentiment-bars__fill--positive"
+                                 :style="'width: ' + sentimentPct(sentimentData.positive) + '%'"></div>
+                        </div>
+                        <span class="sentiment-bars__count" x-text="sentimentData.positive"></span>
+                        <span class="sentiment-bars__pct" x-text="sentimentPct(sentimentData.positive) + '%'"></span>
+                    </div>
+                    <div class="sentiment-bars__row">
+                        <span class="sentiment-bars__label">
+                            <span class="sentiment-badge sentiment-badge--neutral">Neutral</span>
+                        </span>
+                        <div class="sentiment-bars__track">
+                            <div class="sentiment-bars__fill sentiment-bars__fill--neutral"
+                                 :style="'width: ' + sentimentPct(sentimentData.neutral) + '%'"></div>
+                        </div>
+                        <span class="sentiment-bars__count" x-text="sentimentData.neutral"></span>
+                        <span class="sentiment-bars__pct" x-text="sentimentPct(sentimentData.neutral) + '%'"></span>
+                    </div>
+                    <div class="sentiment-bars__row">
+                        <span class="sentiment-bars__label">
+                            <span class="sentiment-badge sentiment-badge--negative">Negative</span>
+                        </span>
+                        <div class="sentiment-bars__track">
+                            <div class="sentiment-bars__fill sentiment-bars__fill--negative"
+                                 :style="'width: ' + sentimentPct(sentimentData.negative) + '%'"></div>
+                        </div>
+                        <span class="sentiment-bars__count" x-text="sentimentData.negative"></span>
+                        <span class="sentiment-bars__pct" x-text="sentimentPct(sentimentData.negative) + '%'"></span>
+                    </div>
+                    <p class="sentiment-bars__footer">
+                        <span x-text="sentimentTotal()"></span> article<span x-show="sentimentTotal() !== 1">s</span>
+                        tagged in the last <span x-text="window"></span> days
+                    </p>
+                </div>
+            </div>
+
+            <div class="dash__panel">
                 <h2 class="heading-section">Coverage themes</h2>
                 <p class="dash__panel-hint" x-show="wordCloud.length === 0" x-cloak>Not enough text yet to build a word cloud.</p>
                 <div class="word-cloud" x-show="wordCloud.length > 0" x-ref="cloud"></div>
