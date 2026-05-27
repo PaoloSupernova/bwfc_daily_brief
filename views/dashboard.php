@@ -242,9 +242,20 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                         <a class="drill-article__headline" :href="article.url" target="_blank" rel="noopener"
                            x-text="article.headline"></a>
                         <p class="drill-article__summary" x-text="article.summary"></p>
-                        <a class="drill-article__brief-link" :href="briefUrl(article.brief_id)">
-                            View brief &rarr;
-                        </a>
+                        <div class="drill-article__actions">
+                            <span class="drill-article__change-label">Change:</span>
+                            <template x-for="s in ['positive', 'neutral', 'negative']" :key="s">
+                                <button type="button"
+                                        class="sentiment-toggle"
+                                        :class="['sentiment-toggle--' + s, article.sentiment === s ? 'is-active' : '']"
+                                        :disabled="article.sentiment === s"
+                                        @click="updateSentiment(article.id, s)"
+                                        x-text="s"></button>
+                            </template>
+                            <a class="drill-article__brief-link" :href="briefUrl(article.brief_id)">
+                                View brief &rarr;
+                            </a>
+                        </div>
                     </div>
                 </template>
             </div>

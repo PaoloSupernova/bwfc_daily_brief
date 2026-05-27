@@ -412,6 +412,26 @@ function dashboardScreen() {
             this.drillArticles = [];
         },
 
+        async updateSentiment(articleId, newSentiment) {
+            const article = this.drillArticles.find(a => a.id === articleId);
+            if (!article || article.sentiment === newSentiment) return;
+
+            const oldSentiment = article.sentiment;
+            article.sentiment = newSentiment; // optimistic update
+
+            try {
+                await apiPost('update_sentiment.php', { article_id: articleId, sentiment: newSentiment });
+                // Remove from drill list (no longer belongs in this sentiment category)
+                this.drillArticles = this.drillArticles.filter(a => a.id !== articleId);
+                // Adjust bar chart counts
+                if (this.sentimentData[oldSentiment] !== undefined) this.sentimentData[oldSentiment]--;
+                if (this.sentimentData[newSentiment] !== undefined) this.sentimentData[newSentiment]++;
+            } catch (err) {
+                article.sentiment = oldSentiment; // roll back on failure
+                console.error('Sentiment update failed:', err);
+            }
+        },
+
         drillTitle() {
             const labels = { positive: 'Positive', neutral: 'Neutral', negative: 'Negative' };
             return labels[this.drillSentiment] || '';

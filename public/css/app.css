@@ -2033,13 +2033,53 @@ code {
     overflow: hidden;
 }
 
+.drill-article__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.drill-article__change-label {
+    font-size: 11px;
+    color: var(--ink-subtle);
+    margin-right: 2px;
+}
+
 .drill-article__brief-link {
     font-size: 12px;
     color: var(--bwfc-red);
     font-weight: 600;
     text-decoration: none;
+    margin-left: auto;
 }
 .drill-article__brief-link:hover { text-decoration: underline; }
+
+/* Sentiment toggle buttons inside the drill panel */
+.sentiment-toggle {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border: 2px solid transparent;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s, border-color 0.15s;
+    background: none;
+}
+.sentiment-toggle:hover:not(:disabled) { opacity: 0.85; }
+.sentiment-toggle.is-active,
+.sentiment-toggle:disabled { opacity: 1; cursor: default; }
+
+.sentiment-toggle--positive { color: #1E5D2C; background: #D7F0DC; border-color: #D7F0DC; }
+.sentiment-toggle--positive.is-active { border-color: #2E8B57; }
+.sentiment-toggle--neutral  { color: #555555; background: #EBEBEB; border-color: #EBEBEB; }
+.sentiment-toggle--neutral.is-active  { border-color: #999999; }
+.sentiment-toggle--negative { color: #8C1A1A; background: #FCE8E8; border-color: #FCE8E8; }
+.sentiment-toggle--negative.is-active { border-color: #C0392B; }
 
 .dash__caption {
     font-size: 11px;
