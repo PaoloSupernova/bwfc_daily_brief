@@ -15,6 +15,7 @@ set_time_limit(0);
 
 require_once __DIR__ . '/_bootstrap.php';
 
+use BWFC\DailyBrief\Auth;
 use BWFC\DailyBrief\Database;
 use BWFC\DailyBrief\Summariser;
 
