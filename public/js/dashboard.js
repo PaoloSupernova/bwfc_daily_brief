@@ -16,6 +16,12 @@ function dashboardScreen() {
         wordCloud: [],
         recentBriefs: [],
 
+        // Sentiment drill-down panel
+        drillOpen: false,
+        drillSentiment: '',
+        drillLoading: false,
+        drillArticles: [],
+
         // Chart instances (kept so we can destroy/recreate on window change)
         _charts: {},
 
@@ -383,6 +389,32 @@ function dashboardScreen() {
         briefUrl(briefId) {
             const base = window.BWFC_BASE || '';
             return base + '/?brief=' + briefId;
+        },
+
+        async openSentimentDrill(sentiment) {
+            this.drillSentiment = sentiment;
+            this.drillOpen = true;
+            this.drillLoading = true;
+            this.drillArticles = [];
+            try {
+                const data = await apiPost('sentiment_articles.php', { sentiment, window: this.window });
+                this.drillArticles = data.articles || [];
+            } catch (err) {
+                console.error('Sentiment drill failed:', err);
+            } finally {
+                this.drillLoading = false;
+            }
+        },
+
+        closeDrill() {
+            this.drillOpen = false;
+            this.drillSentiment = '';
+            this.drillArticles = [];
+        },
+
+        drillTitle() {
+            const labels = { positive: 'Positive', neutral: 'Neutral', negative: 'Negative' };
+            return labels[this.drillSentiment] || '';
         },
 
         sentimentTotal() {

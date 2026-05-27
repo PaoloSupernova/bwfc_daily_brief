@@ -120,7 +120,9 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                     No sentiment data in this window yet. Articles added going forward will be tagged automatically.
                 </p>
                 <div class="sentiment-bars" x-show="sentimentTotal() > 0" x-cloak>
-                    <div class="sentiment-bars__row">
+                    <button type="button" class="sentiment-bars__row sentiment-bars__row--clickable"
+                            @click="openSentimentDrill('positive')"
+                            :disabled="sentimentData.positive === 0">
                         <span class="sentiment-bars__label">
                             <span class="sentiment-badge sentiment-badge--positive">Positive</span>
                         </span>
@@ -130,8 +132,10 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                         </div>
                         <span class="sentiment-bars__count" x-text="sentimentData.positive"></span>
                         <span class="sentiment-bars__pct" x-text="sentimentPct(sentimentData.positive) + '%'"></span>
-                    </div>
-                    <div class="sentiment-bars__row">
+                    </button>
+                    <button type="button" class="sentiment-bars__row sentiment-bars__row--clickable"
+                            @click="openSentimentDrill('neutral')"
+                            :disabled="sentimentData.neutral === 0">
                         <span class="sentiment-bars__label">
                             <span class="sentiment-badge sentiment-badge--neutral">Neutral</span>
                         </span>
@@ -141,8 +145,10 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                         </div>
                         <span class="sentiment-bars__count" x-text="sentimentData.neutral"></span>
                         <span class="sentiment-bars__pct" x-text="sentimentPct(sentimentData.neutral) + '%'"></span>
-                    </div>
-                    <div class="sentiment-bars__row">
+                    </button>
+                    <button type="button" class="sentiment-bars__row sentiment-bars__row--clickable"
+                            @click="openSentimentDrill('negative')"
+                            :disabled="sentimentData.negative === 0">
                         <span class="sentiment-bars__label">
                             <span class="sentiment-badge sentiment-badge--negative">Negative</span>
                         </span>
@@ -152,10 +158,11 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                         </div>
                         <span class="sentiment-bars__count" x-text="sentimentData.negative"></span>
                         <span class="sentiment-bars__pct" x-text="sentimentPct(sentimentData.negative) + '%'"></span>
-                    </div>
+                    </button>
                     <p class="sentiment-bars__footer">
                         <span x-text="sentimentTotal()"></span> article<span x-show="sentimentTotal() !== 1">s</span>
-                        tagged in the last <span x-text="window"></span> days
+                        tagged in the last <span x-text="window"></span> days &middot;
+                        <em>Click a row to see the articles</em>
                     </p>
                 </div>
             </div>
@@ -195,5 +202,52 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             <a href="?archive=1" class="dash__sidebar-cta">View full archive &rarr;</a>
         </aside>
 
+    </div>
+
+    <!-- Sentiment drill-down panel (slide in from right) -->
+    <div class="drill-overlay" x-show="drillOpen" @click.self="closeDrill()" x-cloak
+         x-transition:enter="drill-overlay--enter"
+         x-transition:enter-start="drill-overlay--hidden"
+         x-transition:enter-end="drill-overlay--visible"
+         x-transition:leave="drill-overlay--enter"
+         x-transition:leave-start="drill-overlay--visible"
+         x-transition:leave-end="drill-overlay--hidden">
+        <aside class="drill-panel">
+            <div class="drill-panel__head">
+                <div class="drill-panel__title">
+                    <span class="sentiment-badge"
+                          :class="'sentiment-badge--' + drillSentiment"
+                          x-text="drillTitle()"></span>
+                    <span class="drill-panel__subtitle">
+                        articles &middot; last <span x-text="window"></span> days
+                    </span>
+                </div>
+                <button type="button" class="drill-panel__close" @click="closeDrill()">&times;</button>
+            </div>
+
+            <div class="drill-panel__body">
+                <div class="drill-panel__loading" x-show="drillLoading" x-cloak>Loading&hellip;</div>
+
+                <div class="drill-panel__empty" x-show="!drillLoading && drillArticles.length === 0" x-cloak>
+                    No articles found.
+                </div>
+
+                <template x-for="article in drillArticles" :key="article.id">
+                    <div class="drill-article">
+                        <div class="drill-article__meta">
+                            <span class="drill-article__date" x-text="formatDateShort(article.brief_date)"></span>
+                            <span class="drill-article__section" x-text="article.section_name"></span>
+                            <span class="drill-article__outlet" x-text="article.outlet_name"></span>
+                        </div>
+                        <a class="drill-article__headline" :href="article.url" target="_blank" rel="noopener"
+                           x-text="article.headline"></a>
+                        <p class="drill-article__summary" x-text="article.summary"></p>
+                        <a class="drill-article__brief-link" :href="briefUrl(article.brief_id)">
+                            View brief &rarr;
+                        </a>
+                    </div>
+                </template>
+            </div>
+        </aside>
     </div>
 </div>
