@@ -39,7 +39,7 @@ final class Exporter
 
     public static function zipAvailable(): bool
     {
-        return class_exists('ZipArchive');
+        return class_exists('\\ZipArchive');
     }
 
     /**
@@ -142,8 +142,8 @@ final class Exporter
             throw new RuntimeException('Could not create temp export directory.');
         }
 
-        $zip = new ZipArchive();
-        if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new RuntimeException('Could not create ZIP file at: ' . $zipFile);
         }
 
