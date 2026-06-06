@@ -86,20 +86,49 @@ if (!empty($fetchResult['success'])) {
     $wasPaywallFallback = true;
 }
 
-// Summarise
+// Decide whether we have enough real article text to safely summarise.
+// Hallucination happens when the model is handed little more than a headline
+// (Google News / RSS descriptions are often just the headline echoed back), so
+// we never ask the AI to summarise thin content — we flag for manual editing instead.
+$contentForSummary = trim($articleContent);
+$headlineTrim = trim($headline);
+// Strip a leading echo of the headline from the description if present
+if ($headlineTrim !== '' && stripos($contentForSummary, $headlineTrim) === 0) {
+    $contentForSummary = trim(substr($contentForSummary, strlen($headlineTrim)));
+}
+$hasEnoughContent = mb_strlen($contentForSummary) >= 250;
+
 $summary = '';
 $suggestedSection = 'BWFC';
 $violations = [];
+$summariser = new Summariser();
 
-if (trim($articleContent) !== '') {
+if ($hasEnoughContent) {
     try {
-        $summariser = new Summariser();
         $summary = $summariser->summariseArticle($headline, $outletName, $articleContent);
-        $suggestedSection = $summariser->suggestSection($headline, $outletName, $articleContent);
         $violations = StyleGuard::check($summary)['violations'] ?? [];
     } catch (Throwable $e) {
         $summary = '[Summary generation failed: ' . $e->getMessage() . '] Edit in the editor.';
     }
+} else {
+    // Not enough source text — do not let the AI invent a summary. Store the
+    // honest feed text (if any) or a clear instruction, and flag for manual review.
+    $summary = ($contentForSummary !== '' && mb_strlen($contentForSummary) >= 30)
+        ? $contentForSummary
+        : '[Full article body could not be retrieved. Open the article, paste the text into the editor, and regenerate the summary.]';
+    $wasPaywallFallback = true;
+}
+
+// Section suggestion returns a validated category label, so it is low risk even
+// from a headline alone. Run it either way, using the body when we have it.
+try {
+    $suggestedSection = $summariser->suggestSection(
+        $headline,
+        $outletName,
+        $hasEnoughContent ? $articleContent : $headline
+    );
+} catch (Throwable $e) {
+    $suggestedSection = 'BWFC';
 }
 
 // Resolve section_id
