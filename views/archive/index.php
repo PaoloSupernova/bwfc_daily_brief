@@ -165,6 +165,12 @@ $jsState = [
                         </span>
                     </template>
                 </div>
+                <div class="archive__results-actions" x-show="!loading && visibleBriefIds().length > 0" x-cloak>
+                    <button type="button" class="btn btn--secondary btn--small"
+                            @click="allVisibleSelected() ? clearSelection() : selectAllVisible()">
+                        <span x-text="allVisibleSelected() ? 'Deselect all' : 'Select all on page'"></span>
+                    </button>
+                </div>
             </div>
 
             <!-- Empty state -->
@@ -176,7 +182,10 @@ $jsState = [
             <!-- Search mode: result cards with snippets -->
             <div class="archive__search-results" x-show="mode === 'search' && !loading && results.length > 0" x-cloak>
                 <template x-for="hit in results" :key="hit.article_id">
-                    <article class="search-hit">
+                    <article class="search-hit" :class="{ 'is-selected': isSelected(hit.brief_id) }">
+                        <label class="search-hit__checkbox" :title="isSelected(hit.brief_id) ? 'Deselect' : 'Select brief for PDF download'">
+                            <input type="checkbox" :checked="isSelected(hit.brief_id)" @change="toggleSelect(hit.brief_id)">
+                        </label>
                         <div class="search-hit__head">
                             <span class="search-hit__date" x-text="formatDate(hit.brief_date)"></span>
                             <span class="search-hit__section" x-text="hit.section_name"></span>
@@ -211,7 +220,10 @@ $jsState = [
                         </header>
                         <div class="month-group__items">
                             <template x-for="brief in group.briefs" :key="brief.id">
-                                <article class="brief-card">
+                                <article class="brief-card" :class="{ 'is-selected': isSelected(brief.id) }">
+                                    <label class="brief-card__checkbox" :title="isSelected(brief.id) ? 'Deselect' : 'Select for PDF download'">
+                                        <input type="checkbox" :checked="isSelected(brief.id)" @change="toggleSelect(brief.id)">
+                                    </label>
                                     <div class="brief-card__date-block">
                                         <div class="brief-card__day-name" x-text="dayOfWeek(brief.brief_date)"></div>
                                         <div class="brief-card__day-num" x-text="dayOfMonth(brief.brief_date)"></div>
@@ -263,5 +275,36 @@ $jsState = [
             </nav>
 
         </section>
+    </div>
+
+    <!-- Floating bulk-download bar (appears when briefs are selected) -->
+    <div class="bulk-bar" x-show="selectedBriefs.length > 0" x-cloak
+         x-transition:enter="bulk-bar--enter"
+         x-transition:enter-start="bulk-bar--hidden"
+         x-transition:enter-end="bulk-bar--visible"
+         x-transition:leave="bulk-bar--enter"
+         x-transition:leave-start="bulk-bar--visible"
+         x-transition:leave-end="bulk-bar--hidden">
+        <div class="bulk-bar__inner">
+            <span class="bulk-bar__count">
+                <strong x-text="selectedBriefs.length"></strong>
+                brief<span x-show="selectedBriefs.length !== 1">s</span> selected
+                <span x-show="selectedBriefs.length > 30" class="bulk-bar__warning">&nbsp;(max 30)</span>
+            </span>
+            <div class="bulk-bar__actions">
+                <div class="bulk-bar__error" x-show="bulkError" x-text="bulkError" x-cloak></div>
+                <button type="button" class="btn btn--link bulk-bar__clear" @click="clearSelection()">
+                    Clear
+                </button>
+                <button type="button" class="btn btn--primary"
+                        @click="downloadSelected()"
+                        :disabled="bulkDownloading || selectedBriefs.length > 30">
+                    <span x-show="!bulkDownloading">
+                        &#11015; Download <span x-text="selectedBriefs.length"></span> PDF<span x-show="selectedBriefs.length !== 1">s</span> as ZIP
+                    </span>
+                    <span x-show="bulkDownloading" x-cloak>Generating&hellip;</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>

@@ -42,6 +42,11 @@ function archiveScreen(initial) {
             sentiment: { positive: 0, neutral: 0, negative: 0 },
         },
 
+        // ------ selection state ------
+        selectedBriefs: [],
+        bulkDownloading: false,
+        bulkError: '',
+
         // ------ initial seed (for sidebar before first load) ------
         seedSections: initial.sections || [],
 
@@ -268,6 +273,95 @@ function archiveScreen(initial) {
             const base = window.BWFC_BASE || '';
             const root = base.replace(/\/public\/?$/, '');
             return root + '/api/export_pdf.php?brief_id=' + briefId;
+        },
+
+        // ============================================================
+        // Bulk PDF selection & download
+        // ============================================================
+
+        toggleSelect(briefId) {
+            const idx = this.selectedBriefs.indexOf(briefId);
+            if (idx === -1) {
+                this.selectedBriefs.push(briefId);
+            } else {
+                this.selectedBriefs.splice(idx, 1);
+            }
+        },
+
+        isSelected(briefId) {
+            return this.selectedBriefs.includes(briefId);
+        },
+
+        selectAllVisible() {
+            const ids = this.visibleBriefIds();
+            ids.forEach(id => {
+                if (!this.selectedBriefs.includes(id)) this.selectedBriefs.push(id);
+            });
+        },
+
+        clearSelection() {
+            this.selectedBriefs = [];
+            this.bulkError = '';
+        },
+
+        visibleBriefIds() {
+            if (this.mode === 'list') {
+                return this.groups.flatMap(g => g.briefs.map(b => b.id));
+            }
+            // In search mode, collect unique brief IDs from hits
+            const seen = new Set();
+            const ids = [];
+            this.results.forEach(r => {
+                if (!seen.has(r.brief_id)) { seen.add(r.brief_id); ids.push(r.brief_id); }
+            });
+            return ids;
+        },
+
+        allVisibleSelected() {
+            const ids = this.visibleBriefIds();
+            return ids.length > 0 && ids.every(id => this.selectedBriefs.includes(id));
+        },
+
+        async downloadSelected() {
+            if (this.selectedBriefs.length === 0) return;
+            if (this.selectedBriefs.length > 30) {
+                this.bulkError = 'Maximum 30 PDFs per download. Please narrow your selection.';
+                return;
+            }
+            this.bulkDownloading = true;
+            this.bulkError = '';
+
+            try {
+                const base = window.BWFC_BASE || '';
+                const root = base.replace(/\/public\/?$/, '');
+                const res = await fetch(root + '/api/export_pdf_bulk.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brief_ids: this.selectedBriefs }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+                    throw new Error(err.error || 'Download failed');
+                }
+
+                // Trigger browser download via blob URL
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'bwfc-briefs-' + new Date().toISOString().slice(0, 10) + '.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                this.clearSelection();
+            } catch (err) {
+                this.bulkError = err.message;
+            } finally {
+                this.bulkDownloading = false;
+            }
         },
     };
 }
