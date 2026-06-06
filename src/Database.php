@@ -95,6 +95,45 @@ final class Database
         return (int)self::connection()->lastInsertId();
     }
 
+    /**
+     * Build and run an INSERT from a column => value map. Returns last insert ID.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function insertRow(string $table, array $data): int
+    {
+        $cols = array_keys($data);
+        $placeholders = array_map(fn($c) => ':' . $c, $cols);
+        $sql = 'INSERT INTO `' . $table . '` (`' . implode('`, `', $cols) . '`) VALUES (' . implode(', ', $placeholders) . ')';
+        $stmt = self::connection()->prepare($sql);
+        $stmt->execute($data);
+        return (int)self::connection()->lastInsertId();
+    }
+
+    /**
+     * Build and run an UPDATE from column => value map with simple AND-joined WHERE conditions.
+     * Returns number of affected rows.
+     *
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $where
+     */
+    public static function updateRow(string $table, array $data, array $where): int
+    {
+        $setClauses = array_map(fn($c) => '`' . $c . '` = :set_' . $c, array_keys($data));
+        $whereClauses = array_map(fn($c) => '`' . $c . '` = :whr_' . $c, array_keys($where));
+        $sql = 'UPDATE `' . $table . '` SET ' . implode(', ', $setClauses) . ' WHERE ' . implode(' AND ', $whereClauses);
+        $params = [];
+        foreach ($data as $col => $val) {
+            $params['set_' . $col] = $val;
+        }
+        foreach ($where as $col => $val) {
+            $params['whr_' . $col] = $val;
+        }
+        $stmt = self::connection()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount();
+    }
+
     public static function beginTransaction(): void
     {
         self::connection()->beginTransaction();
