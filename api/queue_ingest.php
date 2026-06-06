@@ -64,7 +64,7 @@ $url = (string)$candidate['url'];
 $fetchResult = null;
 $wasPaywallFallback = false;
 try {
-    $fetchResult = ArticleFetcher::fetch($url);
+    $fetchResult = (new ArticleFetcher())->fetch($url);
 } catch (Throwable $e) {
     $fetchResult = ['success' => false, 'error' => $e->getMessage()];
 }
@@ -93,9 +93,9 @@ $violations = [];
 
 if (trim($articleContent) !== '') {
     try {
-        $summaryResult = Summariser::summarise($headline, $outletName, $articleContent);
-        $summary = (string)($summaryResult['summary'] ?? '');
-        $suggestedSection = (string)($summaryResult['suggested_section'] ?? 'BWFC');
+        $summariser = new Summariser();
+        $summary = $summariser->summariseArticle($headline, $outletName, $articleContent);
+        $suggestedSection = $summariser->suggestSection($headline, $outletName, $articleContent);
         $violations = StyleGuard::check($summary)['violations'] ?? [];
     } catch (Throwable $e) {
         $summary = '[Summary generation failed: ' . $e->getMessage() . '] Edit in the editor.';

@@ -17,7 +17,12 @@ $input = api_input();
 $hours = max(1, min(168, (int)($input['hours'] ?? 48)));
 $statusFilter = trim((string)($input['status_filter'] ?? 'all'));
 
-$where = ["c.discovered_at >= DATE_SUB(NOW(), INTERVAL :hours HOUR)"];
+// discovered_at: respects the selected window
+// published_at cap: exclude articles older than 7 days to prevent first-poll backfill flooding
+$where = [
+    "c.discovered_at >= DATE_SUB(NOW(), INTERVAL :hours HOUR)",
+    "(c.published_at IS NULL OR c.published_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))",
+];
 $params = ['hours' => $hours];
 
 if (in_array($statusFilter, ['new', 'ingested', 'rejected', 'duplicate'], true)) {
@@ -102,6 +107,7 @@ $counts = Database::select(
     "SELECT status, COUNT(*) AS n
      FROM discovery_candidates
      WHERE discovered_at >= DATE_SUB(NOW(), INTERVAL :hours HOUR)
+       AND (published_at IS NULL OR published_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
      GROUP BY status",
     ['hours' => $hours]
 );
