@@ -35,6 +35,8 @@ $asset = function (string $relativePath) use ($basePath): string {
     <script src="<?= htmlspecialchars($asset('js/app.js'), ENT_QUOTES) ?>"></script>
     <script src="<?= htmlspecialchars($asset('js/archive.js'), ENT_QUOTES) ?>"></script>
     <script src="<?= htmlspecialchars($asset('js/dashboard.js'), ENT_QUOTES) ?>"></script>
+    <script src="<?= htmlspecialchars($asset('js/queue.js'), ENT_QUOTES) ?>"></script>
+    <script src="<?= htmlspecialchars($asset('js/admin.js'), ENT_QUOTES) ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -52,7 +54,9 @@ $asset = function (string $relativePath) use ($basePath): string {
             <nav class="site-nav">
                 <a href="<?= $basePath ?>/" class="site-nav__link">Dashboard</a>
                 <a href="<?= $basePath ?>/?brief=new" class="site-nav__link site-nav__link--primary">New Brief</a>
+                <a href="<?= $basePath ?>/?queue=1" class="site-nav__link <?= ($queue ?? false) ? 'is-active' : '' ?>">Queue</a>
                 <a href="<?= $basePath ?>/?archive=1" class="site-nav__link">Archive</a>
+                <a href="<?= $basePath ?>/?insights=1" class="site-nav__link <?= ($insights ?? false) ? 'is-active' : '' ?>">Insights</a>
                 <a href="<?= $basePath ?>/?admin=sections" class="site-nav__link <?= (($admin ?? '') !== '') ? 'is-active' : '' ?>">Admin</a>
                 <?php if ($user !== null): ?>
                     <span class="site-nav__user"><?= htmlspecialchars($user['name'], ENT_QUOTES) ?></span>

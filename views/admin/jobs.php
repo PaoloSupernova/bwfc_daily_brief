@@ -52,8 +52,8 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 <li><strong>Name:</strong> BWFC Daily Brief Jobs</li>
                 <li><strong>Trigger:</strong> Daily at 06:30</li>
                 <li><strong>Action:</strong> Start a program</li>
-                <li><strong>Program:</strong> <code>C:\xampp\php\php.exe</code></li>
-                <li><strong>Arguments:</strong> <code>C:\xampp\htdocs\bwfc-daily-brief\bin\run_jobs.php</code></li>
+                <li><strong>Program:</strong> <code>C:\xampp_new\php\php.exe</code></li>
+                <li><strong>Arguments:</strong> <code>C:\xampp_new\htdocs\bwfc-daily-brief\bin\run_jobs.php</code></li>
             </ul>
             <p>The script runs both jobs each time but skips work that's not due. Insights only generate on Mondays unless forced.</p>
         </div>

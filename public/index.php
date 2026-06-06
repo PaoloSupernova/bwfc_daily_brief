@@ -8,7 +8,12 @@
  *   /?brief=<id>           → edit existing brief
  *   /?brief=<id>&review=1  → final review screen (edit + export)
  *   /?archive=1            → archive page
+ *   /?queue=1              → morning discovery queue
+ *   /?insights=1           → weekly insights
  *   /?admin=sections       → admin: manage sections
+ *   /?admin=sources        → admin: discovery sources
+ *   /?admin=jobs           → admin: scheduled jobs
+ *   /?admin=export         → admin: export data
  */
 
 declare(strict_types=1);
@@ -23,6 +28,8 @@ Auth::requireLogin();
 $action = $_GET['brief'] ?? null;
 $review = isset($_GET['review']);
 $archive = isset($_GET['archive']);
+$queue = isset($_GET['queue']);
+$insights = isset($_GET['insights']);
 $admin = $_GET['admin'] ?? null;
 
 if ($admin !== null) {
@@ -30,6 +37,14 @@ if ($admin !== null) {
         case 'sections':
             $view = VIEWS_PATH . '/admin/sections.php';
             $pageTitle = 'Admin - Sections';
+            break;
+        case 'sources':
+            $view = VIEWS_PATH . '/admin/sources.php';
+            $pageTitle = 'Admin - Discovery Sources';
+            break;
+        case 'jobs':
+            $view = VIEWS_PATH . '/admin/jobs.php';
+            $pageTitle = 'Admin - Scheduled Jobs';
             break;
         case 'export':
             $view = VIEWS_PATH . '/admin/export.php';
@@ -39,6 +54,12 @@ if ($admin !== null) {
             $view = VIEWS_PATH . '/admin/index.php';
             $pageTitle = 'Admin';
     }
+} elseif ($queue) {
+    $view = VIEWS_PATH . '/queue.php';
+    $pageTitle = 'Morning Queue';
+} elseif ($insights) {
+    $view = VIEWS_PATH . '/insights.php';
+    $pageTitle = 'Weekly Insights';
 } elseif ($action === 'new') {
     $today = date('Y-m-d');
     $existing = BriefRepository::findBriefByDate($today);

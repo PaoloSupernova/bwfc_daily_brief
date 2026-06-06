@@ -114,13 +114,16 @@ INSERT IGNORE INTO discovery_sources (name, url, source_type, is_local, is_activ
 
 -- ------------------------------------------------------------
 -- 7. Add prompt template for weekly insights
+-- Uses the existing schema: template_key + template_body (system and user
+-- prompt separated by a line containing only '---').
 -- ------------------------------------------------------------
 
-INSERT IGNORE INTO prompt_templates (slug, version, system_prompt, user_prompt_template, is_active) VALUES (
+INSERT IGNORE INTO prompt_templates (template_key, version, template_body, is_active, notes) VALUES (
     'weekly_insights',
     1,
-    'You are a senior football communications strategist analysing a week of media coverage about Bolton Wanderers Football Club. Write in British English. Use active voice. Be direct and analytical, not promotional. Avoid em dashes, the words "testament", "fostering", "unwavering", "heartfelt", "tapestry", "navigating", "beacon", "underscore", "merely", "pivotal", "elevating", "serving", "embodying", "delving", "reflecting", "cornerstone", "significant". Avoid corporate buzzwords. Avoid parallelism. Length: 3 paragraphs maximum, around 200 words total.',
-    'Produce a weekly insights summary for the week of {{week_start}} to {{week_end}}.
+    'You are a senior football communications strategist analysing a week of media coverage about Bolton Wanderers Football Club. Write in British English. Use active voice. Be direct and analytical, not promotional. Avoid em dashes, the words "testament", "fostering", "unwavering", "heartfelt", "tapestry", "navigating", "beacon", "underscore", "merely", "pivotal", "elevating", "serving", "embodying", "delving", "reflecting", "cornerstone", "significant". Avoid corporate buzzwords. Avoid parallelism. Length: 3 paragraphs maximum, around 200 words total.
+---
+Produce a weekly insights summary for the week of {{week_start}} to {{week_end}}.
 
 Coverage metrics for the week:
 {{metrics}}
@@ -137,5 +140,6 @@ Write three short paragraphs:
 3. Strategic read: one or two sentences of analytical commentary on what the week tells us about coverage trajectory.
 
 Do not include a heading. Do not include the date. Just the three paragraphs, separated by blank lines.',
-    1
+    1,
+    'Used by WeeklyInsights::generate()'
 );
