@@ -5,6 +5,18 @@ use BWFC\DailyBrief\Auth;
 
 $user = Auth::currentUser();
 $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+
+/**
+ * Build a cache-busted URL for a local asset under /public.
+ * Appends ?v=<file-modification-time> so browsers fetch a fresh copy
+ * whenever the file changes, but cache aggressively when it hasn't.
+ */
+$asset = function (string $relativePath) use ($basePath): string {
+    $url = $basePath . '/' . ltrim($relativePath, '/');
+    $file = (defined('PUBLIC_PATH') ? PUBLIC_PATH : __DIR__ . '/../public') . '/' . ltrim($relativePath, '/');
+    $version = is_file($file) ? (string)filemtime($file) : (string)time();
+    return $url . '?v=' . $version;
+};
 ?><!DOCTYPE html>
 <html lang="en-GB">
 <head>
@@ -12,7 +24,7 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex,nofollow">
     <title><?= htmlspecialchars($pageTitle ?? 'BWFC Daily Brief', ENT_QUOTES) ?></title>
-    <link rel="stylesheet" href="<?= $basePath ?>/css/app.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('css/app.css'), ENT_QUOTES) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo+Narrow:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,9 +32,9 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
     <script>
         window.BWFC_BASE = '<?= $basePath ?>';
     </script>
-    <script src="<?= $basePath ?>/js/app.js"></script>
-    <script src="<?= $basePath ?>/js/archive.js"></script>
-    <script src="<?= $basePath ?>/js/dashboard.js"></script>
+    <script src="<?= htmlspecialchars($asset('js/app.js'), ENT_QUOTES) ?>"></script>
+    <script src="<?= htmlspecialchars($asset('js/archive.js'), ENT_QUOTES) ?>"></script>
+    <script src="<?= htmlspecialchars($asset('js/dashboard.js'), ENT_QUOTES) ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
