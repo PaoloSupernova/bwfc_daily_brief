@@ -28,10 +28,7 @@ Open **PowerShell** (or Git Bash) and run:
 cd C:\xampp\htdocs
 git clone https://github.com/PaoloSupernova/bwfc_daily_brief.git bwfc-daily-brief
 cd bwfc-daily-brief
-git checkout claude/add-archive-pdf-download-jKr66
 ```
-
-> **Note:** Replace the branch name above with `main` once the feature branch has been merged.
 
 ---
 
