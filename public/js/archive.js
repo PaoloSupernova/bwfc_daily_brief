@@ -45,6 +45,7 @@ function archiveScreen(initial) {
         // ------ selection state ------
         selectedBriefs: [],
         bulkDownloading: false,
+        bulkDownloadingWord: false,
         bulkError: '',
 
         // ------ initial seed (for sidebar before first load) ------
@@ -275,8 +276,14 @@ function archiveScreen(initial) {
             return root + '/api/export_pdf.php?brief_id=' + briefId;
         },
 
+        wordUrl(briefId) {
+            const base = window.BWFC_BASE || '';
+            const root = base.replace(/\/public\/?$/, '');
+            return root + '/api/export_word.php?brief_id=' + briefId;
+        },
+
         // ============================================================
-        // Bulk PDF selection & download
+        // Bulk selection & download (PDF or Word)
         // ============================================================
 
         toggleSelect(briefId) {
@@ -361,6 +368,49 @@ function archiveScreen(initial) {
                 this.bulkError = err.message;
             } finally {
                 this.bulkDownloading = false;
+            }
+        },
+
+        async downloadSelectedWord() {
+            if (this.selectedBriefs.length === 0) return;
+            if (this.selectedBriefs.length > 30) {
+                this.bulkError = 'Maximum 30 documents per download. Please narrow your selection.';
+                return;
+            }
+            this.bulkDownloadingWord = true;
+            this.bulkError = '';
+
+            try {
+                const base = window.BWFC_BASE || '';
+                const root = base.replace(/\/public\/?$/, '');
+                const res = await fetch(root + '/api/export_word_bulk.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brief_ids: this.selectedBriefs }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+                    throw new Error(err.error || 'Download failed');
+                }
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = this.selectedBriefs.length === 1
+                    ? 'bwfc-brief-' + new Date().toISOString().slice(0, 10) + '.docx'
+                    : 'bwfc-briefs-' + new Date().toISOString().slice(0, 10) + '.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                this.clearSelection();
+            } catch (err) {
+                this.bulkError = err.message;
+            } finally {
+                this.bulkDownloadingWord = false;
             }
         },
     };
