@@ -61,24 +61,33 @@ final class ClaudeClient
     }
 
     /**
-     * Retry on 529 overload with exponential backoff (3 attempts: 2s, 4s, 8s).
+     * Retry on transient failures: network timeouts, connection errors, and
+     * HTTP 529 overload responses. Up to 3 attempts with exponential backoff
+     * (2 s, 5 s, 10 s) so a brief routing hiccup doesn't surface as an error.
      *
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
     private function requestWithRetry(array $payload): array
     {
-        $delays = [2, 4, 8];
+        $delays = [2, 5, 10];
         $attempt = 0;
 
         while (true) {
             try {
                 return $this->request($payload);
             } catch (RuntimeException $e) {
-                $isOverload = str_contains($e->getMessage(), 'temporarily busy')
-                    || str_contains($e->getMessage(), '529');
+                $msg = $e->getMessage();
 
-                if (!$isOverload || $attempt >= count($delays)) {
+                $isTransient = str_contains($msg, 'temporarily busy')
+                    || str_contains($msg, '529')
+                    || str_contains($msg, 'Timeout')
+                    || str_contains($msg, 'timed out')
+                    || str_contains($msg, 'Connection refused')
+                    || str_contains($msg, 'Could not resolve host')
+                    || str_contains($msg, 'Failed to connect');
+
+                if (!$isTransient || $attempt >= count($delays)) {
                     throw $e;
                 }
 
@@ -121,8 +130,8 @@ final class ClaudeClient
                 'x-api-key: ' . $this->apiKey,
                 'anthropic-version: ' . self::API_VERSION,
             ],
-            CURLOPT_TIMEOUT => 60,
-            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT        => (int)env('ANTHROPIC_TIMEOUT', 120),
+            CURLOPT_CONNECTTIMEOUT => (int)env('ANTHROPIC_CONNECT_TIMEOUT', 30),
         ]);
 
         $body = curl_exec($ch);
