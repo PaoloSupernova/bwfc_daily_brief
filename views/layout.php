@@ -60,6 +60,9 @@ $asset = function (string $relativePath) use ($basePath): string {
                 <a href="<?= $basePath ?>/?admin=sections" class="site-nav__link <?= (($admin ?? '') !== '') ? 'is-active' : '' ?>">Admin</a>
                 <?php if ($user !== null): ?>
                     <span class="site-nav__user"><?= htmlspecialchars($user['name'], ENT_QUOTES) ?></span>
+                    <?php if (Auth::enabled()): ?>
+                        <a href="<?= $basePath ?>/auth/logout.php" class="site-nav__link site-nav__link--logout">Sign out</a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </nav>
         </div>
