@@ -60,6 +60,11 @@ $jsState = [
         <div class="field__actions">
             <span class="field__word-count" x-text="wordCount(executiveSummary) + ' words'"></span>
             <span class="field__hint" x-show="execSaved" x-cloak>Saved</span>
+            <button type="button" class="btn btn--secondary btn--small" @click="copyExecutiveSummary()"
+                    :disabled="!executiveSummary.trim()">
+                <span x-show="!execCopied">Copy to clipboard</span>
+                <span x-show="execCopied" x-cloak>Copied &check;</span>
+            </button>
         </div>
     </section>
 

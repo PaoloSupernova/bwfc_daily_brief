@@ -634,6 +634,7 @@ function reviewScreen(initial) {
         copiedFormat: null,
         statusMessage: '',
         execSaved: false,
+        execCopied: false,
         _sortables: [],
 
         init() {
@@ -821,6 +822,46 @@ function reviewScreen(initial) {
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
             }
+        },
+
+        /**
+         * Copy just the executive summary text to the clipboard so it can be
+         * pasted straight into an email. Uses the in-memory value; falls back
+         * to a manual-copy prompt if the Clipboard API is unavailable
+         * (e.g. non-HTTPS context).
+         */
+        async copyExecutiveSummary() {
+            const text = (this.executiveSummary || '').trim();
+            if (text === '') {
+                this.statusMessage = 'Nothing to copy — the executive summary is empty.';
+                return;
+            }
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    this.fallbackCopy(text);
+                }
+                this.execCopied = true;
+                setTimeout(() => { this.execCopied = false; }, 2500);
+            } catch (err) {
+                this.fallbackCopy(text);
+                this.execCopied = true;
+                setTimeout(() => { this.execCopied = false; }, 2500);
+            }
+        },
+
+        /** Legacy clipboard copy for browsers without the async Clipboard API. */
+        fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) { /* no-op */ }
+            document.body.removeChild(ta);
         },
 
         async copyFormat(format) {
