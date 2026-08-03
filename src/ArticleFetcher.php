@@ -152,14 +152,12 @@ final class ArticleFetcher
 
     private function extractHeadline(string $html): string
     {
-        // Prefer Open Graph title
-        if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
-            return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        }
+        // Prefer Open Graph title, then Twitter card.
+        $title = $this->metaContent($html, 'property', 'og:title')
+              ?? $this->metaContent($html, 'name', 'twitter:title');
 
-        // Then Twitter card
-        if (preg_match('/<meta[^>]+name=["\']twitter:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
-            return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($title !== null) {
+            return trim(html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         }
 
         // Then <title>
@@ -168,6 +166,42 @@ final class ArticleFetcher
         }
 
         return '';
+    }
+
+    /**
+     * Extract a <meta> tag's content value, matching the identifying attribute
+     * ($attr=$value, e.g. property="og:title") in any position within the tag.
+     *
+     * The content value is captured using a back-referenced delimiter — (["\'])
+     * then \1 — so an attribute value that contains the *opposite* quote
+     * character reads in full. The previous [^"\']+ pattern truncated at the
+     * first apostrophe, so a double-quoted value like
+     *   content="Bolton's new signing"
+     * was captured as just "Bolton". Outlets that HTML-encode the apostrophe were
+     * unaffected, which is why only some sources (e.g. The Bolton News) showed
+     * clipped headlines.
+     */
+    private function metaContent(string $html, string $attr, string $value): ?string
+    {
+        if (!preg_match_all('/<meta\b[^>]*>/is', $html, $tags)) {
+            return null;
+        }
+
+        $attrQ  = preg_quote($attr, '/');
+        $valueQ = preg_quote($value, '/');
+
+        foreach ($tags[0] as $tag) {
+            // Does this meta tag identify itself as the one we want?
+            if (!preg_match('/\b' . $attrQ . '=(["\'])' . $valueQ . '\1/i', $tag)) {
+                continue;
+            }
+            // Pull its content value, honouring the delimiting quote.
+            if (preg_match('/\bcontent=(["\'])(.*?)\1/is', $tag, $cm)) {
+                return $cm[2];
+            }
+        }
+
+        return null;
     }
 
     private function extractContent(string $html): string
