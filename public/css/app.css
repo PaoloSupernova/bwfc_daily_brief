@@ -806,6 +806,54 @@ code {
     flex-wrap: wrap;
 }
 
+/* ---------- Prior-coverage warning (amber) ---------- */
+.prior-coverage-panel {
+    background: #FFF7E6;
+    border: 1px solid #F3D28B;
+    border-left: 4px solid #E0A106;
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-top: 12px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+.prior-coverage-panel__icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+    color: #C7890A;
+    margin-top: 2px;
+}
+.prior-coverage-panel__body { flex: 1; }
+.prior-coverage-panel__title {
+    font-weight: 700;
+    color: var(--bwfc-navy);
+    margin: 0 0 6px;
+    font-size: 15px;
+}
+.prior-coverage-panel__text {
+    font-size: 14px;
+    color: var(--ink);
+    margin: 0 0 6px;
+}
+.prior-coverage-panel__meta {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin: 0 0 8px;
+}
+.prior-coverage-panel__meta a { color: var(--bwfc-blue); }
+.prior-coverage-panel__hint {
+    font-size: 13px;
+    color: var(--ink-subtle);
+    margin: 0 0 14px;
+}
+.prior-coverage-panel__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 /* ---------- Output / preview ---------- */
 .output-actions {
     display: flex;

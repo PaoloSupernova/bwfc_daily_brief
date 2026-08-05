@@ -251,6 +251,95 @@ final class BriefRepository
     }
 
     /**
+     * Check whether the exact same article URL has already appeared in an
+     * earlier (non-deleted) brief, so the user can be warned before adding a
+     * duplicate. The current brief is excluded so re-pasting within the same
+     * editing session isn't flagged as prior coverage.
+     *
+     * URLs are compared in canonical form (scheme/www/trailing-slash and common
+     * tracking params ignored) so trivially different links to the same article
+     * still match.
+     *
+     * @return array{brief_id:int, brief_date:string, headline:string, status:string, url:string}|null
+     *         The most recent matching brief, or null if never covered before.
+     */
+    public static function findPriorCoverage(string $url, int $excludeBriefId = 0): ?array
+    {
+        $canonical = self::canonicalUrl($url);
+        if ($canonical === '') {
+            return null;
+        }
+
+        // Narrow candidates with a LIKE on the host+path core (no query string),
+        // then confirm an exact canonical match in PHP.
+        $core = explode('?', $canonical, 2)[0];
+
+        $rows = Database::select(
+            "SELECT a.url, a.headline, a.brief_id, b.brief_date, b.status
+             FROM brief_articles a
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL
+               AND a.brief_id <> :exclude
+               AND a.url LIKE :like
+             ORDER BY b.brief_date DESC, a.id DESC",
+            ['exclude' => $excludeBriefId, 'like' => '%' . $core . '%']
+        );
+
+        foreach ($rows as $row) {
+            if (self::canonicalUrl((string)$row['url']) === $canonical) {
+                return [
+                    'brief_id'   => (int)$row['brief_id'],
+                    'brief_date' => (string)$row['brief_date'],
+                    'headline'   => (string)$row['headline'],
+                    'status'     => (string)$row['status'],
+                    'url'        => (string)$row['url'],
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Reduce a URL to a canonical comparison key: lowercased host without a
+     * leading "www.", path without a trailing slash, and query string stripped
+     * of common tracking params (utm_*, fbclid, gclid, etc.) then sorted.
+     */
+    private static function canonicalUrl(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || empty($parts['host'])) {
+            // Not a parseable URL — fall back to a loose normalisation.
+            return rtrim(strtolower($url), '/');
+        }
+
+        $host = preg_replace('/^www\./', '', strtolower((string)$parts['host'])) ?? '';
+        $path = rtrim((string)($parts['path'] ?? ''), '/');
+
+        $query = '';
+        if (!empty($parts['query'])) {
+            parse_str((string)$parts['query'], $q);
+            foreach (array_keys($q) as $k) {
+                if (preg_match('/^(utm_|fbclid|gclid|mc_cid|mc_eid|igshid|ref|cmp|source)$/i', (string)$k)
+                    || stripos((string)$k, 'utm_') === 0) {
+                    unset($q[$k]);
+                }
+            }
+            if (!empty($q)) {
+                ksort($q);
+                $query = '?' . http_build_query($q);
+            }
+        }
+
+        return $host . $path . $query;
+    }
+
+    /**
      * Delete an article and cascade-delete any related coverage children.
      */
     public static function deleteArticleWithChildren(int $articleId): void

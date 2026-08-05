@@ -94,6 +94,9 @@ function briefEditor(initial) {
         showFallback: false,
         showReview: false,
         duplicateSuggestion: null,
+        priorCoverage: null,
+        _fetchSucceeded: false,
+        _fetchErrorMsg: '',
         fetchError: '',
         statusMessage: '',
         copied: false,
@@ -113,6 +116,7 @@ function briefEditor(initial) {
             this.showFallback = false;
             this.showReview = false;
             this.duplicateSuggestion = null;
+            this.priorCoverage = null;
             this.fetchError = '';
         },
 
@@ -126,12 +130,16 @@ function briefEditor(initial) {
             if (!this.urlInput) return;
             this.fetching = true;
             this.fetchError = '';
+            this.priorCoverage = null;
             this.statusMessage = 'Fetching article...';
             this.showReview = false;
             this.showFallback = false;
 
             try {
-                const data = await apiPost('fetch_article.php', { url: this.urlInput });
+                const data = await apiPost('fetch_article.php', {
+                    url: this.urlInput,
+                    brief_id: this.briefId,
+                });
                 const a = data.article;
 
                 this.pending = emptyPending();
@@ -139,16 +147,19 @@ function briefEditor(initial) {
                 this.pending.outlet = a.outlet || 'Unknown';
                 this.pending.headline = a.headline || '';
                 this.pending.content = a.content || '';
+                this._fetchSucceeded = !!a.success;
+                this._fetchErrorMsg = a.error || '';
 
-                if (!a.success) {
-                    this.fetchError = a.error || 'Could not extract article content. Paste the article body below.';
-                    this.pending.was_paywall_fallback = true;
-                    this.showFallback = true;
+                // Prior-coverage gate: if this exact link appeared in an earlier
+                // brief, stop and ask before doing anything else. Default is to
+                // NOT repeat — the user must explicitly choose "Add it anyway".
+                if (data.prior_coverage) {
+                    this.priorCoverage = data.prior_coverage;
                     this.statusMessage = '';
-                } else {
-                    this.statusMessage = 'Article fetched. Generating summary...';
-                    await this.generateSummary(false);
+                    return;
                 }
+
+                await this.continueAfterFetch();
             } catch (err) {
                 this.fetchError = err.message;
                 this.statusMessage = '';
@@ -159,6 +170,37 @@ function briefEditor(initial) {
             } finally {
                 this.fetching = false;
             }
+        },
+
+        /**
+         * Continue the add-article flow after a fetch (and after any
+         * prior-coverage override): summarise if we got the body, otherwise
+         * drop into the manual-paste fallback.
+         */
+        async continueAfterFetch() {
+            if (this._fetchSucceeded) {
+                this.statusMessage = 'Article fetched. Generating summary...';
+                await this.generateSummary(false);
+            } else {
+                this.fetchError = this._fetchErrorMsg || 'Could not extract article content. Paste the article body below.';
+                this.pending.was_paywall_fallback = true;
+                this.showFallback = true;
+                this.statusMessage = '';
+            }
+        },
+
+        /** User chose to use a previously-covered article anyway. */
+        usePriorCoverageAnyway() {
+            this.priorCoverage = null;
+            this.continueAfterFetch();
+        },
+
+        /** User backed out of adding a previously-covered article. */
+        dismissPriorCoverage() {
+            this.priorCoverage = null;
+            this.resetPending();
+            this.urlInput = '';
+            this.statusMessage = '';
         },
 
         async generateSummary(fromFallback, skipDuplicateCheck) {
@@ -484,6 +526,14 @@ function briefEditor(initial) {
         wordCount(text) {
             if (!text) return 0;
             return text.trim().split(/\s+/).filter(Boolean).length;
+        },
+
+        /** Format a YYYY-MM-DD date as e.g. "5 August 2026" for display. */
+        prettyDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr + 'T00:00:00');
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         },
     };
 }

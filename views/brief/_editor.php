@@ -106,6 +106,31 @@ $jsState = [
             </div>
         </div>
 
+        <!-- Prior coverage: this exact link appeared in an earlier brief -->
+        <div class="prior-coverage-panel" x-show="priorCoverage" x-cloak>
+            <div class="prior-coverage-panel__icon">&#9888;</div>
+            <div class="prior-coverage-panel__body">
+                <p class="prior-coverage-panel__title">Already covered in a previous brief</p>
+                <p class="prior-coverage-panel__text">
+                    This exact link was included in the brief dated
+                    <strong x-text="priorCoverage && prettyDate(priorCoverage.brief_date)"></strong><span x-show="priorCoverage && priorCoverage.status === 'sent'"> (sent)</span>:
+                </p>
+                <p class="prior-coverage-panel__meta">
+                    <a :href="priorCoverage && priorCoverage.url" target="_blank" rel="noopener"
+                       x-text="priorCoverage && priorCoverage.headline"></a>
+                </p>
+                <p class="prior-coverage-panel__hint">To avoid duplication it won&rsquo;t be added. You can override this if you intend to feature it again.</p>
+                <div class="prior-coverage-panel__actions">
+                    <button type="button" class="btn btn--secondary" @click="dismissPriorCoverage()">
+                        Don&rsquo;t add
+                    </button>
+                    <button type="button" class="btn btn--primary" @click="usePriorCoverageAnyway()" :disabled="processing">
+                        Add it anyway
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Duplicate / related coverage suggestion -->
         <div class="duplicate-panel" x-show="duplicateSuggestion" x-cloak>
             <div class="duplicate-panel__icon">&#9741;</div>
