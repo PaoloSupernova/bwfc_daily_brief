@@ -23,6 +23,7 @@ use BWFC\DailyBrief\ArticleFetcher;
 use BWFC\DailyBrief\Summariser;
 use BWFC\DailyBrief\BriefRepository;
 use BWFC\DailyBrief\JournalistRepository;
+use BWFC\DailyBrief\PeopleRepository;
 use BWFC\DailyBrief\StyleGuard;
 use BWFC\DailyBrief\AuditLog;
 
@@ -167,6 +168,9 @@ $articleId = BriefRepository::addArticle($briefId, [
 // Link journalists from the detected byline (empty string => Unassigned).
 $bylineRaw = !empty($fetchResult['success']) ? (string)($fetchResult['byline_raw'] ?? '') : '';
 JournalistRepository::syncArticleByline($articleId, $bylineRaw, $outletName);
+
+// Auto-detect known people named in the article.
+PeopleRepository::autoDetectForArticle($articleId, trim($headline . ' ' . $articleContent));
 
 // Mark candidate as ingested
 Database::updateRow('discovery_candidates', [

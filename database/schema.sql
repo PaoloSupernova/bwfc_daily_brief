@@ -118,6 +118,36 @@ CREATE TABLE IF NOT EXISTS article_journalists (
 ) ENGINE=InnoDB;
 
 -- -----------------------------------------------------
+-- Table: people  (players / staff / execs — subjects of coverage)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS people (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(200) NOT NULL,
+    name_key VARCHAR(200) NOT NULL,
+    role ENUM('player','staff','exec','other') NOT NULL DEFAULT 'other',
+    is_known TINYINT(1) NOT NULL DEFAULT 0,
+    aliases VARCHAR(500) NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_people_name_key (name_key)
+) ENGINE=InnoDB;
+
+-- -----------------------------------------------------
+-- Table: article_people  (many-to-many)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS article_people (
+    article_id INT UNSIGNED NOT NULL,
+    person_id INT UNSIGNED NOT NULL,
+    confidence ENUM('known','manual','ai') NOT NULL DEFAULT 'known',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (article_id, person_id),
+    INDEX idx_ap_person (person_id),
+    CONSTRAINT fk_ap_article FOREIGN KEY (article_id) REFERENCES brief_articles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ap_person FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- -----------------------------------------------------
 -- Table: outlets
 -- Domain-to-publication-name mapping
 -- -----------------------------------------------------

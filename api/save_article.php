@@ -13,6 +13,7 @@ require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\BriefRepository;
 use BWFC\DailyBrief\JournalistRepository;
+use BWFC\DailyBrief\PeopleRepository;
 use BWFC\DailyBrief\AuditLog;
 
 $input = api_input();
@@ -81,6 +82,17 @@ JournalistRepository::syncArticleByline(
     isset($input['byline']) ? (string)$input['byline'] : null,
     (string)($input['outlet_name'] ?? '')
 );
+
+// Link people: use the editor's list if it names anyone, otherwise auto-detect
+// from the headline + body against the known squad/staff/exec list (this also
+// covers manually-pasted articles whose body wasn't scanned at fetch time).
+$peopleField = trim((string)($input['people'] ?? ''));
+if ($peopleField !== '') {
+    PeopleRepository::syncArticlePeople($articleId, $peopleField);
+} else {
+    $detectText = trim((string)($input['headline'] ?? '') . ' ' . (string)($input['article_content'] ?? ''));
+    PeopleRepository::autoDetectForArticle($articleId, $detectText);
+}
 
 AuditLog::record('article_added', 'article', $articleId, [
     'brief_id' => $briefId,

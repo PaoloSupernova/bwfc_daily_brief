@@ -189,6 +189,15 @@ $jsState = [
             </div>
 
             <div class="field">
+                <label class="field__label">
+                    People mentioned
+                    <span class="field__label-meta" x-show="!pending.people" x-cloak>&middot; none detected</span>
+                </label>
+                <input type="text" class="input" x-model="pending.people" placeholder="Players / staff named — e.g. Josh Sheehan, Steven Schumacher">
+                <p class="field__hint">Auto-detected squad &amp; staff. Add or correct names, separated by commas.</p>
+            </div>
+
+            <div class="field">
                 <label class="field__label">Section</label>
                 <select class="select" x-model="pending.section_slug">
                     <template x-for="s in sections" :key="s.slug">

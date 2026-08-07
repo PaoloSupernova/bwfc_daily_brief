@@ -219,3 +219,40 @@ Headline: {{headline}}
 Outlet: {{outlet}}
 Content preview:
 {{content}}', 1, 'Default section suggest prompt, v1');
+
+-- -----------------------------------------------------
+-- Known people: current BWFC squad, head coach, executives
+-- -----------------------------------------------------
+INSERT INTO people (name, name_key, role, is_known, aliases, active) VALUES
+    ('Jack Bonham', 'jack bonham', 'player', 1, NULL, 1),
+    ('Nathan Broome', 'nathan broome', 'player', 1, NULL, 1),
+    ('David Harrington', 'david harrington', 'player', 1, NULL, 1),
+    ('Luke Hutchinson', 'luke hutchinson', 'player', 1, NULL, 1),
+    ('Chris Forino-Joseph', 'chris forino joseph', 'player', 1, 'Chris Forino', 1),
+    ('Richard Taylor', 'richard taylor', 'player', 1, NULL, 1),
+    ('Jordi Osei-Tutu', 'jordi osei tutu', 'player', 1, NULL, 1),
+    ('Eoin Toal', 'eoin toal', 'player', 1, NULL, 1),
+    ('Akin Famewo', 'akin famewo', 'player', 1, NULL, 1),
+    ('Lewis Temple', 'lewis temple', 'player', 1, NULL, 1),
+    ('Cyrus Christie', 'cyrus christie', 'player', 1, NULL, 1),
+    ('Sam Inwood', 'sam inwood', 'player', 1, NULL, 1),
+    ('Gaizka Larrazabal', 'gaizka larrazabal', 'player', 1, NULL, 1),
+    ('Ben Davies', 'ben davies', 'player', 1, NULL, 1),
+    ('Xavier Simons', 'xavier simons', 'player', 1, NULL, 1),
+    ('Josh Sheehan', 'josh sheehan', 'player', 1, NULL, 1),
+    ('Joel Randall', 'joel randall', 'player', 1, NULL, 1),
+    ('Ethan Erhahon', 'ethan erhahon', 'player', 1, NULL, 1),
+    ('Max Conway', 'max conway', 'player', 1, NULL, 1),
+    ('Rúben Rodrigues', 'ruben rodrigues', 'player', 1, 'Ruben Rodrigues', 1),
+    ('Daeshon Lawrence', 'daeshon lawrence', 'player', 1, NULL, 1),
+    ('Luca Stephenson', 'luca stephenson', 'player', 1, NULL, 1),
+    ('Toby Ritchie', 'toby ritchie', 'player', 1, NULL, 1),
+    ('Sam Dalby', 'sam dalby', 'player', 1, NULL, 1),
+    ('Thierry Gale', 'thierry gale', 'player', 1, NULL, 1),
+    ('Charlie Warren', 'charlie warren', 'player', 1, NULL, 1),
+    ('John McAtee', 'john mcatee', 'player', 1, NULL, 1),
+    ('Kyliane Dong', 'kyliane dong', 'player', 1, NULL, 1),
+    ('Steven Schumacher', 'steven schumacher', 'staff', 1, NULL, 1),
+    ('Fergal Harkin', 'fergal harkin', 'exec', 1, NULL, 1),
+    ('David Ray', 'david ray', 'exec', 1, NULL, 1),
+    ('Sharon Brittan', 'sharon brittan', 'exec', 1, NULL, 1);

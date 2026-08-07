@@ -214,7 +214,10 @@ final class BriefRepository
             'SELECT a.*, s.name AS section_name, s.slug AS section_slug,
                     (SELECT GROUP_CONCAT(j.name ORDER BY j.name SEPARATOR ", ")
                      FROM article_journalists aj JOIN journalists j ON j.id = aj.journalist_id
-                     WHERE aj.article_id = a.id) AS byline
+                     WHERE aj.article_id = a.id) AS byline,
+                    (SELECT GROUP_CONCAT(p.name ORDER BY p.name SEPARATOR ", ")
+                     FROM article_people ap JOIN people p ON p.id = ap.person_id
+                     WHERE ap.article_id = a.id) AS people
              FROM brief_articles a
              JOIN sections s ON s.id = a.section_id
              WHERE a.id = :id',
@@ -231,7 +234,10 @@ final class BriefRepository
             'SELECT a.*, s.name AS section_name, s.slug AS section_slug, s.display_order AS section_order,
                     (SELECT GROUP_CONCAT(j.name ORDER BY j.name SEPARATOR ", ")
                      FROM article_journalists aj JOIN journalists j ON j.id = aj.journalist_id
-                     WHERE aj.article_id = a.id) AS byline
+                     WHERE aj.article_id = a.id) AS byline,
+                    (SELECT GROUP_CONCAT(p.name ORDER BY p.name SEPARATOR ", ")
+                     FROM article_people ap JOIN people p ON p.id = ap.person_id
+                     WHERE ap.article_id = a.id) AS people
              FROM brief_articles a
              JOIN sections s ON s.id = a.section_id
              WHERE a.brief_id = :id

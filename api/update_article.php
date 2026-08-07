@@ -13,6 +13,7 @@ require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\BriefRepository;
 use BWFC\DailyBrief\JournalistRepository;
+use BWFC\DailyBrief\PeopleRepository;
 use BWFC\DailyBrief\StyleGuard;
 use BWFC\DailyBrief\AuditLog;
 
@@ -35,8 +36,9 @@ if (isset($input['summary'])) {
 }
 
 $bylineProvided = array_key_exists('byline', $input);
+$peopleProvided = array_key_exists('people', $input);
 
-if (count($fields) === 0 && !$bylineProvided) {
+if (count($fields) === 0 && !$bylineProvided && !$peopleProvided) {
     api_error('No fields to update');
 }
 
@@ -50,6 +52,11 @@ if ($bylineProvided) {
     $current = BriefRepository::getArticle($articleId);
     $outlet = $current !== null ? (string)($current['outlet_name'] ?? '') : '';
     JournalistRepository::syncArticleByline($articleId, (string)$input['byline'], $outlet);
+}
+
+// Re-link people when the "people mentioned" field was edited.
+if ($peopleProvided) {
+    PeopleRepository::syncArticlePeople($articleId, (string)$input['people']);
 }
 
 $violations = isset($fields['summary']) ? StyleGuard::check($fields['summary']) : ['clean' => true, 'violations' => []];

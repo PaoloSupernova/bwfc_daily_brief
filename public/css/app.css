@@ -908,6 +908,51 @@ code {
     color: var(--ink);
 }
 
+/* People dashboard + squad admin extras */
+.people-roles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 18px;
+}
+.people-roles__admin {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--bwfc-blue);
+    text-decoration: none;
+}
+.people-tag {
+    display: inline-block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-subtle);
+    border: 1px solid var(--line, #DADADA);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.squad-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    gap: 14px;
+    align-items: end;
+}
+.squad-form__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.squad-table__actions { white-space: nowrap; text-align: right; }
+.squad-del { color: #C0392B; }
+.journos-table tr.is-inactive { opacity: 0.5; }
+@media (max-width: 720px) {
+    .squad-form { grid-template-columns: 1fr; }
+}
+
 /* ---------- Prior-coverage warning (amber) ---------- */
 .prior-coverage-panel {
     background: #FFF7E6;

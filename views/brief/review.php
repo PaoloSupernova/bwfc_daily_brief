@@ -20,6 +20,7 @@ $jsState = [
         'url' => (string)$a['url'],
         'outlet' => (string)$a['outlet_name'],
         'byline' => (string)($a['byline'] ?? ''),
+        'people' => (string)($a['people'] ?? ''),
         'headline' => (string)$a['headline'],
         'summary' => (string)$a['summary'],
         'section_id' => (int)$a['section_id'],
@@ -101,6 +102,11 @@ $jsState = [
                                    x-model="article.byline"
                                    @blur="saveArticleField(article)"
                                    placeholder="Byline — journalist(s), or blank for Unassigned">
+
+                            <input class="review-article__byline review-article__people"
+                                   x-model="article.people"
+                                   @blur="saveArticleField(article)"
+                                   placeholder="People mentioned — players / staff, comma-separated">
 
                             <textarea class="review-article__summary" rows="4"
                                       x-model="article.summary"
