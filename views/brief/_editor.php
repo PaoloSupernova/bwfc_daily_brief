@@ -91,6 +91,10 @@ $jsState = [
                 <input type="text" class="input" x-model="pending.outlet" placeholder="Publication name">
             </div>
             <div class="field">
+                <label class="field__label">Byline <span class="field__label-meta">&middot; journalist(s), or leave blank for Unassigned</span></label>
+                <input type="text" class="input" x-model="pending.byline" placeholder="e.g. Marc Iles">
+            </div>
+            <div class="field">
                 <label class="field__label">Article body</label>
                 <textarea class="textarea textarea--tall" rows="10" x-model="pending.content"
                           placeholder="Paste the full article text here..."></textarea>
@@ -173,6 +177,15 @@ $jsState = [
                 </div>
                 <div class="review-panel__headline" x-text="pending.headline"></div>
                 <a class="review-panel__link" x-show="pending.url" :href="pending.url" target="_blank" rel="noopener" x-text="pending.url"></a>
+            </div>
+
+            <div class="field">
+                <label class="field__label">
+                    Byline
+                    <span class="field__label-meta" x-show="!pending.byline" x-cloak>&middot; none detected &mdash; Unassigned</span>
+                </label>
+                <input type="text" class="input" x-model="pending.byline" placeholder="Journalist(s) — leave blank for Unassigned">
+                <p class="field__hint">Detected from the article. Correct it or add a name; separate multiple authors with &ldquo;and&rdquo;.</p>
             </div>
 
             <div class="field">

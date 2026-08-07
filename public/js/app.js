@@ -46,6 +46,7 @@ function emptyPending() {
         url: '',
         headline: '',
         outlet: '',
+        byline: '',
         content: '',
         summary: '',
         section_slug: 'bwfc',
@@ -146,6 +147,7 @@ function briefEditor(initial) {
                 this.pending.url = this.urlInput;
                 this.pending.outlet = a.outlet || 'Unknown';
                 this.pending.headline = a.headline || '';
+                this.pending.byline = a.byline_raw || '';
                 this.pending.content = a.content || '';
                 this._fetchSucceeded = !!a.success;
                 this._fetchErrorMsg = a.error || '';
@@ -341,6 +343,7 @@ function briefEditor(initial) {
                     url: this.pending.url,
                     outlet_name: this.pending.outlet,
                     headline: this.pending.headline,
+                    byline: this.pending.byline,
                     article_content: this.pending.content,
                     summary: this.pending.summary,
                     summary_original: this.pending.summary,
@@ -360,6 +363,7 @@ function briefEditor(initial) {
                     id: a.id,
                     url: a.url,
                     outlet: a.outlet_name,
+                    byline: a.byline || '',
                     headline: a.headline,
                     summary: a.summary,
                     section_name: a.section_name,
@@ -797,6 +801,7 @@ function reviewScreen(initial) {
                     article_id: article.id,
                     headline: article.headline,
                     outlet_name: article.outlet,
+                    byline: article.byline || '',
                     summary: article.summary,
                 });
             } catch (err) {

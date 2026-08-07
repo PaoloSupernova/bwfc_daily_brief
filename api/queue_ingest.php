@@ -22,6 +22,7 @@ use BWFC\DailyBrief\Database;
 use BWFC\DailyBrief\ArticleFetcher;
 use BWFC\DailyBrief\Summariser;
 use BWFC\DailyBrief\BriefRepository;
+use BWFC\DailyBrief\JournalistRepository;
 use BWFC\DailyBrief\StyleGuard;
 use BWFC\DailyBrief\AuditLog;
 
@@ -162,6 +163,10 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary_original' => $summary,
     'was_paywall_fallback' => $wasPaywallFallback,
 ]);
+
+// Link journalists from the detected byline (empty string => Unassigned).
+$bylineRaw = !empty($fetchResult['success']) ? (string)($fetchResult['byline_raw'] ?? '') : '';
+JournalistRepository::syncArticleByline($articleId, $bylineRaw, $outletName);
 
 // Mark candidate as ingested
 Database::updateRow('discovery_candidates', [

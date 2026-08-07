@@ -12,6 +12,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\BriefRepository;
+use BWFC\DailyBrief\JournalistRepository;
 use BWFC\DailyBrief\StyleGuard;
 use BWFC\DailyBrief\AuditLog;
 
@@ -33,11 +34,23 @@ if (isset($input['summary'])) {
     $fields['summary'] = trim((string)$input['summary']);
 }
 
-if (count($fields) === 0) {
+$bylineProvided = array_key_exists('byline', $input);
+
+if (count($fields) === 0 && !$bylineProvided) {
     api_error('No fields to update');
 }
 
-BriefRepository::updateArticleFields($articleId, $fields);
+if (count($fields) > 0) {
+    BriefRepository::updateArticleFields($articleId, $fields);
+}
+
+// Re-link journalists when the byline was edited. Outlet comes from the
+// article's current row so name→outlet stays in sync.
+if ($bylineProvided) {
+    $current = BriefRepository::getArticle($articleId);
+    $outlet = $current !== null ? (string)($current['outlet_name'] ?? '') : '';
+    JournalistRepository::syncArticleByline($articleId, (string)$input['byline'], $outlet);
+}
 
 $violations = isset($fields['summary']) ? StyleGuard::check($fields['summary']) : ['clean' => true, 'violations' => []];
 

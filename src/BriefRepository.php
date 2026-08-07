@@ -211,7 +211,10 @@ final class BriefRepository
     public static function getArticle(int $articleId): ?array
     {
         return Database::selectOne(
-            'SELECT a.*, s.name AS section_name, s.slug AS section_slug
+            'SELECT a.*, s.name AS section_name, s.slug AS section_slug,
+                    (SELECT GROUP_CONCAT(j.name ORDER BY j.name SEPARATOR ", ")
+                     FROM article_journalists aj JOIN journalists j ON j.id = aj.journalist_id
+                     WHERE aj.article_id = a.id) AS byline
              FROM brief_articles a
              JOIN sections s ON s.id = a.section_id
              WHERE a.id = :id',
@@ -225,7 +228,10 @@ final class BriefRepository
     public static function articlesForBrief(int $briefId): array
     {
         return Database::select(
-            'SELECT a.*, s.name AS section_name, s.slug AS section_slug, s.display_order AS section_order
+            'SELECT a.*, s.name AS section_name, s.slug AS section_slug, s.display_order AS section_order,
+                    (SELECT GROUP_CONCAT(j.name ORDER BY j.name SEPARATOR ", ")
+                     FROM article_journalists aj JOIN journalists j ON j.id = aj.journalist_id
+                     WHERE aj.article_id = a.id) AS byline
              FROM brief_articles a
              JOIN sections s ON s.id = a.section_id
              WHERE a.brief_id = :id

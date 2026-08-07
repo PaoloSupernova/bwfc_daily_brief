@@ -12,6 +12,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\BriefRepository;
+use BWFC\DailyBrief\JournalistRepository;
 use BWFC\DailyBrief\AuditLog;
 
 $input = api_input();
@@ -73,6 +74,13 @@ $articleId = BriefRepository::addArticle($briefId, [
     'parent_article_id' => $parentArticleId,
     'sentiment' => $sentiment,
 ]);
+
+// Link journalists from the (possibly user-edited) byline.
+JournalistRepository::syncArticleByline(
+    $articleId,
+    isset($input['byline']) ? (string)$input['byline'] : null,
+    (string)($input['outlet_name'] ?? '')
+);
 
 AuditLog::record('article_added', 'article', $articleId, [
     'brief_id' => $briefId,

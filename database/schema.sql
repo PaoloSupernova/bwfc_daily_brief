@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS sections (
     name VARCHAR(100) NOT NULL,
     display_order INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    counts_for_journalists TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_display_order (display_order)
@@ -71,6 +72,7 @@ CREATE TABLE IF NOT EXISTS brief_articles (
     display_order INT NOT NULL DEFAULT 0,
     url VARCHAR(2048) NOT NULL,
     outlet_name VARCHAR(255) NOT NULL,
+    byline_raw VARCHAR(500) NULL,
     headline VARCHAR(500) NOT NULL,
     article_content MEDIUMTEXT NULL,
     summary TEXT NOT NULL,
@@ -85,6 +87,34 @@ CREATE TABLE IF NOT EXISTS brief_articles (
     FULLTEXT idx_search (headline, summary, article_content),
     CONSTRAINT fk_articles_brief FOREIGN KEY (brief_id) REFERENCES briefs(id) ON DELETE CASCADE,
     CONSTRAINT fk_articles_section FOREIGN KEY (section_id) REFERENCES sections(id)
+) ENGINE=InnoDB;
+
+-- -----------------------------------------------------
+-- Table: journalists
+-- One row per attributed author (name-only identity)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS journalists (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(200) NOT NULL,
+    name_key VARCHAR(200) NOT NULL,
+    last_outlet VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_name_key (name_key)
+) ENGINE=InnoDB;
+
+-- -----------------------------------------------------
+-- Table: article_journalists
+-- Many-to-many: an article can credit several authors
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS article_journalists (
+    article_id INT UNSIGNED NOT NULL,
+    journalist_id INT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (article_id, journalist_id),
+    INDEX idx_journalist (journalist_id),
+    CONSTRAINT fk_aj_article FOREIGN KEY (article_id) REFERENCES brief_articles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_aj_journalist FOREIGN KEY (journalist_id) REFERENCES journalists(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- -----------------------------------------------------

@@ -30,6 +30,7 @@ final class ArticleFetcher
         $base = [
             'headline' => '',
             'content' => '',
+            'byline_raw' => '',
             'outlet' => $outlet,
             'domain' => $domain,
             'paywalled' => $paywalled,
@@ -43,11 +44,13 @@ final class ArticleFetcher
 
             $headline = $this->extractHeadline($html);
             $content = $this->extractContent($html);
+            $byline = $this->extractByline($html);
 
             if ($content === '' || strlen($content) < 100) {
                 return array_merge($base, [
                     'success' => false,
                     'headline' => $headline,
+                    'byline_raw' => $byline,
                     'error' => 'Article content could not be extracted automatically. Use the paste fallback.',
                 ]);
             }
@@ -56,6 +59,7 @@ final class ArticleFetcher
                 'success' => true,
                 'headline' => $headline,
                 'content' => $content,
+                'byline_raw' => $byline,
                 'outlet' => $outlet,
                 'domain' => $domain,
                 'paywalled' => $paywalled,
@@ -202,6 +206,151 @@ final class ArticleFetcher
         }
 
         return null;
+    }
+
+    /**
+     * Extract the article byline (author names), preferring reliable sources:
+     *   1. JSON-LD structured data (schema.org Article/NewsArticle author)
+     *   2. <meta name="author"> / <meta property="article:author">
+     *   3. Common byline CSS classes / rel="author" links
+     *
+     * Returns a raw string (names joined by " and ") for downstream parsing,
+     * or '' when no author can be found.
+     */
+    private function extractByline(string $html): string
+    {
+        // 1. JSON-LD — the most structured and reliable source.
+        $fromJsonLd = $this->bylineFromJsonLd($html);
+        if ($fromJsonLd !== '') {
+            return $fromJsonLd;
+        }
+
+        // 2. Meta tags.
+        $meta = $this->metaContent($html, 'name', 'author')
+             ?? $this->metaContent($html, 'property', 'article:author');
+        if ($meta !== null) {
+            $meta = trim(html_entity_decode($meta, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            // article:author is sometimes a URL rather than a name — ignore those.
+            if ($meta !== '' && !preg_match('#^https?://#i', $meta)) {
+                return $meta;
+            }
+        }
+
+        // 3. Byline CSS classes / rel="author".
+        $fromDom = $this->bylineFromDom($html);
+        if ($fromDom !== '') {
+            return $fromDom;
+        }
+
+        return '';
+    }
+
+    /**
+     * Pull author name(s) out of any application/ld+json blocks. Handles author
+     * as a string, an object with a name, an array of either, and @graph nesting.
+     */
+    private function bylineFromJsonLd(string $html): string
+    {
+        if (!preg_match_all(
+            '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is',
+            $html,
+            $blocks
+        )) {
+            return '';
+        }
+
+        foreach ($blocks[1] as $json) {
+            $data = json_decode(trim($json), true);
+            if (!is_array($data)) {
+                continue;
+            }
+
+            // Normalise to a list of nodes to inspect (handles @graph and top-level arrays).
+            $nodes = [];
+            if (isset($data['@graph']) && is_array($data['@graph'])) {
+                $nodes = $data['@graph'];
+            } elseif (array_is_list($data)) {
+                $nodes = $data;
+            } else {
+                $nodes = [$data];
+            }
+
+            foreach ($nodes as $node) {
+                if (!is_array($node) || !isset($node['author'])) {
+                    continue;
+                }
+                $names = $this->namesFromAuthorField($node['author']);
+                if ($names !== []) {
+                    return implode(' and ', $names);
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param mixed $author
+     * @return array<int, string>
+     */
+    private function namesFromAuthorField($author): array
+    {
+        $names = [];
+
+        if (is_string($author)) {
+            $author = trim($author);
+            if ($author !== '') {
+                $names[] = $author;
+            }
+        } elseif (is_array($author)) {
+            if (isset($author['name']) && is_string($author['name'])) {
+                // Single author object.
+                $n = trim($author['name']);
+                if ($n !== '') {
+                    $names[] = $n;
+                }
+            } else {
+                // List of authors (objects or strings).
+                foreach ($author as $entry) {
+                    if (is_string($entry) && trim($entry) !== '') {
+                        $names[] = trim($entry);
+                    } elseif (is_array($entry) && isset($entry['name']) && is_string($entry['name']) && trim($entry['name']) !== '') {
+                        $names[] = trim($entry['name']);
+                    }
+                }
+            }
+        }
+
+        return $names;
+    }
+
+    /** Look for visible byline markup: rel="author", or class/itemprop hints. */
+    private function bylineFromDom(string $html): string
+    {
+        // rel="author" anchor text.
+        if (preg_match('/<a[^>]+rel=["\']author["\'][^>]*>(.*?)<\/a>/is', $html, $m)) {
+            $text = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($text !== '') {
+                return $text;
+            }
+        }
+
+        // itemprop="author" or a class containing "byline"/"author".
+        $patterns = [
+            '/<[^>]+itemprop=["\']author["\'][^>]*>(.*?)<\/[^>]+>/is',
+            '/<[^>]+class=["\'][^"\']*\b(?:byline|author-name|author)\b[^"\']*["\'][^>]*>(.*?)<\/[^>]+>/is',
+        ];
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $html, $m)) {
+                $text = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+                if ($text !== '' && mb_strlen($text) <= 120) {
+                    return $text;
+                }
+            }
+        }
+
+        return '';
     }
 
     private function extractContent(string $html): string

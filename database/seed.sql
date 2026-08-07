@@ -4,12 +4,12 @@
 -- -----------------------------------------------------
 -- Sections (from March 2025 guide)
 -- -----------------------------------------------------
-INSERT INTO sections (slug, name, display_order) VALUES
-    ('bwfc', 'BWFC', 10),
-    ('efl', 'EFL', 20),
-    ('womens_game', 'Women''s Game', 30),
-    ('general_football', 'General Football', 40),
-    ('other_sport', 'Other Sport', 50);
+INSERT INTO sections (slug, name, display_order, counts_for_journalists) VALUES
+    ('bwfc', 'BWFC', 10, 1),
+    ('efl', 'EFL', 20, 1),
+    ('womens_game', 'Women''s Game', 30, 0),
+    ('general_football', 'General Football', 40, 0),
+    ('other_sport', 'Other Sport', 50, 0);
 
 -- -----------------------------------------------------
 -- Placeholder admin user (for audit log references before SSO)
