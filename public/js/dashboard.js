@@ -17,6 +17,10 @@ function dashboardScreen() {
         topicBreakdown: [],
         recentBriefs: [],
 
+        // Reputation alerts
+        alerts: [],
+        dismissedAlerts: [],
+
         // Sentiment drill-down panel
         drillOpen: false,
         drillSentiment: '',
@@ -52,6 +56,43 @@ function dashboardScreen() {
                 console.error('Dashboard load failed:', err);
             } finally {
                 this.loading = false;
+            }
+            this.loadAlerts();
+        },
+
+        // ============================================================
+        // Reputation alerts
+        // ============================================================
+
+        async loadAlerts() {
+            try {
+                this.dismissedAlerts = JSON.parse(localStorage.getItem(this.alertDismissKey()) || '[]');
+            } catch (e) {
+                this.dismissedAlerts = [];
+            }
+            try {
+                const base = (window.BWFC_BASE || '').replace(/\/public\/?$/, '');
+                const res = await fetch(base + '/api/alerts.php');
+                const data = await res.json();
+                this.alerts = (data.alerts || []);
+            } catch (e) {
+                this.alerts = [];
+            }
+        },
+
+        // Dismissals reset each day so a still-live issue re-surfaces next morning.
+        alertDismissKey() {
+            return 'bwfc_alerts_dismissed_' + new Date().toISOString().slice(0, 10);
+        },
+
+        visibleAlerts() {
+            return this.alerts.filter(a => !this.dismissedAlerts.includes(a.id));
+        },
+
+        dismissAlert(id) {
+            if (!this.dismissedAlerts.includes(id)) {
+                this.dismissedAlerts.push(id);
+                try { localStorage.setItem(this.alertDismissKey(), JSON.stringify(this.dismissedAlerts)); } catch (e) {}
             }
         },
 

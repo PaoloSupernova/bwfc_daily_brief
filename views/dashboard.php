@@ -5,6 +5,20 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 ?>
 <div class="dash" x-data="dashboardScreen()" x-init="loadAnalytics()">
 
+    <!-- Reputation alerts -->
+    <section class="alerts" x-show="visibleAlerts().length > 0" x-cloak>
+        <template x-for="a in visibleAlerts()" :key="a.id">
+            <div class="alert" :class="'alert--' + a.level">
+                <div class="alert__icon" x-text="a.level === 'warning' ? '⚠' : 'ℹ'"></div>
+                <div class="alert__body">
+                    <div class="alert__title" x-text="a.title"></div>
+                    <div class="alert__detail" x-text="a.detail"></div>
+                </div>
+                <button type="button" class="alert__dismiss" @click="dismissAlert(a.id)" title="Dismiss for today">&times;</button>
+            </div>
+        </template>
+    </section>
+
     <header class="dash__hero">
         <div class="dash__hero-text">
             <h1 class="heading-display">Daily Brief</h1>
