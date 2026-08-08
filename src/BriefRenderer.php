@@ -147,27 +147,29 @@ final class BriefRenderer
         $inner = '';
 
         if ($mode === 'hero' && $imageSrc !== '') {
-            // Smaller hero: capped width, sits above the text.
+            // Smaller hero on its own line, below the headline.
             $inner = $kicker . $headlineHtml
-                . '<img src="' . $img . '" alt="" referrerpolicy="no-referrer" '
-                . 'style="width: 100%; max-width: 420px; height: auto; display: block; border-radius: 8px; margin: 0 0 14px;">'
+                . '<img src="' . $img . '" alt="" width="380" referrerpolicy="no-referrer" '
+                . 'style="width: 380px; max-width: 100%; height: auto; display: block; border-radius: 8px; margin: 2px 0 14px;">'
                 . $summaryHtml . $moreHtml;
         } elseif (($mode === 'left' || $mode === 'right') && $imageSrc !== '') {
-            // Headline spans full width; image floats and the summary flows tight
-            // around it, so there's no wasted space.
+            // Headline full width; image floats and the summary flows around it.
+            // The card wrapper below sets overflow:hidden so the float is always
+            // contained within this story (never leaks into the next card).
             $float = $mode === 'left' ? 'left' : 'right';
-            $margin = $mode === 'left' ? 'margin: 2px 16px 4px 0;' : 'margin: 2px 0 4px 16px;';
+            $margin = $mode === 'left' ? 'margin: 2px 16px 6px 0;' : 'margin: 2px 0 6px 16px;';
             $imgTag = '<img src="' . $img . '" alt="" width="160" referrerpolicy="no-referrer" '
                 . 'style="width: 160px; float: ' . $float . '; ' . $margin . ' border-radius: 8px; border: 1px solid #E2E2E6;">';
             $inner = $kicker . $headlineHtml . $imgTag . $summaryHtml . $moreHtml
-                . '<div style="clear: both; font-size: 0; line-height: 0;">&nbsp;</div>';
+                . '<div style="clear: both; font-size: 1px; line-height: 0;">&nbsp;</div>';
         } else {
             $inner = $kicker . $headlineHtml . $summaryHtml . $moreHtml;
         }
 
-        // Subtle grey card (table wrapper for email reliability).
-        return '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 14px; background: #F5F6F8; border: 1px solid #ECEEF1; border-radius: 10px;">'
-            . '<tr><td style="padding: 18px 20px;">' . $inner . '</td></tr></table>';
+        // Subtle grey card. overflow:hidden makes the card a self-contained
+        // block so a floated image can never escape into the next story.
+        return '<div style="background: #F5F6F8; border: 1px solid #ECEEF1; border-radius: 10px; padding: 18px 20px; margin: 0 0 14px; overflow: hidden;">'
+            . $inner . '</div>';
     }
 
     private static function groupBySection(array $articles): array
