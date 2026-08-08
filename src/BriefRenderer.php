@@ -106,7 +106,13 @@ final class BriefRenderer
         $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
         $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
 
-        $h = '<div style="margin-bottom: 18px;">';
+        $imageUrl = trim((string)($article['image_url'] ?? ''));
+
+        $h = '<div style="margin-bottom: 18px; overflow: hidden;">';
+        if ($imageUrl !== '') {
+            $imgSrc = htmlspecialchars($imageUrl, ENT_QUOTES);
+            $h .= '<img src="' . $imgSrc . '" alt="" width="140" style="width: 140px; float: right; margin: 2px 0 8px 14px; border-radius: 4px;">';
+        }
         $h .= '<div style="font-size: 13pt; margin-bottom: 6px;">';
         $h .= '<span style="font-weight: bold; color: ' . self::NAVY . ';">' . $outlet . ':</span> ';
         $h .= '<a href="' . $url . '" style="color: ' . self::BLUE . '; font-weight: bold; text-decoration: underline;">' . $headline . '</a>';
@@ -352,7 +358,13 @@ final class BriefRenderer
                 $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
                 $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
 
+                $imageUrl = trim((string)($article['image_url'] ?? ''));
+
                 $html .= '<div class="article">';
+                if ($imageUrl !== '') {
+                    $imgSrc = htmlspecialchars($imageUrl, ENT_QUOTES);
+                    $html .= '<img src="' . $imgSrc . '" class="article-image" style="width: 96pt; float: right; margin: 0 0 4pt 8pt;">';
+                }
                 $html .= '<div class="article-head"><span class="article-outlet">' . $outlet . ':</span> ';
                 $html .= '<a href="' . $url . '" class="article-headline">' . $headline . '</a></div>';
                 $html .= '<div class="article-summary">' . $summary . '</div>';
@@ -370,6 +382,7 @@ final class BriefRenderer
                     $html .= '</div>';
                 }
 
+                $html .= '<div style="clear: both;"></div>';
                 $html .= '</div>';
             }
             $html .= '</div>';

@@ -44,6 +44,7 @@ const SECTION_SLUG_MAP = {
 function emptyPending() {
     return {
         url: '',
+        image_url: '',
         headline: '',
         outlet: '',
         byline: '',
@@ -151,6 +152,7 @@ function briefEditor(initial) {
                 this.pending.headline = a.headline || '';
                 this.pending.byline = a.byline_raw || '';
                 this.pending.people = a.people_detected || '';
+                this.pending.image_url = a.image_url || '';
                 this.pending.content = a.content || '';
                 this._fetchSucceeded = !!a.success;
                 this._fetchErrorMsg = a.error || '';
@@ -345,6 +347,7 @@ function briefEditor(initial) {
                     brief_date: this.briefDate,
                     section_slug: this.pending.section_slug,
                     url: this.pending.url,
+                    image_url: this.pending.image_url,
                     outlet_name: this.pending.outlet,
                     headline: this.pending.headline,
                     byline: this.pending.byline,
@@ -368,6 +371,7 @@ function briefEditor(initial) {
                 this.articles.push({
                     id: a.id,
                     url: a.url,
+                    image_url: a.image_url || '',
                     outlet: a.outlet_name,
                     byline: a.byline || '',
                     people: a.people || '',
@@ -812,6 +816,7 @@ function reviewScreen(initial) {
                     byline: article.byline || '',
                     people: article.people || '',
                     topic: article.topic || '',
+                    image_url: article.image_url || '',
                     summary: article.summary,
                 });
             } catch (err) {

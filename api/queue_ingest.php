@@ -171,6 +171,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary_original' => $summary,
     'was_paywall_fallback' => $wasPaywallFallback,
     'topic' => $topic,
+    'image_url' => !empty($fetchResult['success']) ? (string)($fetchResult['image_url'] ?? '') : '',
 ]);
 
 // Link journalists from the detected byline (empty string => Unassigned).

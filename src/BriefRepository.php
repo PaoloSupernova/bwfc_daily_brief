@@ -124,13 +124,17 @@ final class BriefRepository
 
         $topic = isset($data['topic']) && $data['topic'] !== '' ? Topics::normalise((string)$data['topic']) : null;
 
+        $imageUrl = isset($data['image_url']) && trim((string)$data['image_url']) !== ''
+            ? trim((string)$data['image_url'])
+            : null;
+
         return Database::insert(
             'INSERT INTO brief_articles
-                (brief_id, section_id, display_order, url, outlet_name, headline,
+                (brief_id, section_id, display_order, url, image_url, outlet_name, headline,
                  article_content, summary, summary_original, was_paywall_fallback,
                  parent_article_id, sentiment, topic)
              VALUES
-                (:brief_id, :section_id, :display_order, :url, :outlet_name, :headline,
+                (:brief_id, :section_id, :display_order, :url, :image_url, :outlet_name, :headline,
                  :article_content, :summary, :summary_original, :was_paywall_fallback,
                  :parent_article_id, :sentiment, :topic)',
             [
@@ -138,6 +142,7 @@ final class BriefRepository
                 'section_id' => (int)$data['section_id'],
                 'display_order' => $order,
                 'url' => $data['url'] ?? '',
+                'image_url' => $imageUrl,
                 'outlet_name' => $data['outlet_name'] ?? 'Unknown',
                 'headline' => $data['headline'] ?? '',
                 'article_content' => $data['article_content'] ?? null,
@@ -175,7 +180,7 @@ final class BriefRepository
             throw new RuntimeException('Brief is sent and locked');
         }
 
-        $allowed = ['headline', 'outlet_name', 'summary', 'section_id', 'topic'];
+        $allowed = ['headline', 'outlet_name', 'summary', 'section_id', 'topic', 'image_url'];
         $sets = [];
         $params = ['id' => $articleId];
 
@@ -183,6 +188,9 @@ final class BriefRepository
             if (!in_array($k, $allowed, true)) continue;
             if ($k === 'topic') {
                 $v = ($v === '' || $v === null) ? null : Topics::normalise((string)$v);
+            }
+            if ($k === 'image_url') {
+                $v = (is_string($v) && trim($v) !== '') ? trim($v) : null;
             }
             $sets[] = "{$k} = :{$k}";
             $params[$k] = $v;

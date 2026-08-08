@@ -31,6 +31,7 @@ final class ArticleFetcher
             'headline' => '',
             'content' => '',
             'byline_raw' => '',
+            'image_url' => '',
             'outlet' => $outlet,
             'domain' => $domain,
             'paywalled' => $paywalled,
@@ -45,12 +46,14 @@ final class ArticleFetcher
             $headline = $this->extractHeadline($html);
             $content = $this->extractContent($html);
             $byline = $this->extractByline($html);
+            $image = $this->extractImage($html, $url);
 
             if ($content === '' || strlen($content) < 100) {
                 return array_merge($base, [
                     'success' => false,
                     'headline' => $headline,
                     'byline_raw' => $byline,
+                    'image_url' => $image,
                     'error' => 'Article content could not be extracted automatically. Use the paste fallback.',
                 ]);
             }
@@ -60,6 +63,7 @@ final class ArticleFetcher
                 'headline' => $headline,
                 'content' => $content,
                 'byline_raw' => $byline,
+                'image_url' => $image,
                 'outlet' => $outlet,
                 'domain' => $domain,
                 'paywalled' => $paywalled,
@@ -322,6 +326,44 @@ final class ArticleFetcher
         }
 
         return $names;
+    }
+
+    /**
+     * Extract the lead image (og:image, then twitter:image). Resolves a
+     * protocol-relative or root-relative URL against the article URL, and
+     * ignores anything that isn't a plausible http(s) image link.
+     */
+    private function extractImage(string $html, string $articleUrl): string
+    {
+        $raw = $this->metaContent($html, 'property', 'og:image')
+            ?? $this->metaContent($html, 'property', 'og:image:url')
+            ?? $this->metaContent($html, 'name', 'twitter:image')
+            ?? $this->metaContent($html, 'name', 'twitter:image:src');
+
+        if ($raw === null) {
+            return '';
+        }
+        $raw = trim(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($raw === '') {
+            return '';
+        }
+
+        // Resolve common relative forms against the article URL.
+        if (str_starts_with($raw, '//')) {
+            $scheme = parse_url($articleUrl, PHP_URL_SCHEME) ?: 'https';
+            $raw = $scheme . ':' . $raw;
+        } elseif (str_starts_with($raw, '/')) {
+            $scheme = parse_url($articleUrl, PHP_URL_SCHEME) ?: 'https';
+            $host = parse_url($articleUrl, PHP_URL_HOST) ?: '';
+            if ($host !== '') {
+                $raw = $scheme . '://' . $host . $raw;
+            }
+        }
+
+        if (!preg_match('#^https?://#i', $raw)) {
+            return '';
+        }
+        return $raw;
     }
 
     /** Look for visible byline markup: rel="author", or class/itemprop hints. */

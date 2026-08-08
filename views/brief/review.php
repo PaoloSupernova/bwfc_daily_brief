@@ -110,6 +110,20 @@ $jsState = [
                                    @blur="saveArticleField(article)"
                                    placeholder="People mentioned — players / staff, comma-separated">
 
+                            <div class="review-article__image">
+                                <img x-show="article.image_url" x-cloak :src="article.image_url" alt=""
+                                     @error="article.image_url = ''; saveArticleField(article)">
+                                <div class="review-article__image-controls">
+                                    <input class="review-article__byline review-article__imgurl"
+                                           x-model="article.image_url"
+                                           @blur="saveArticleField(article)"
+                                           placeholder="Image URL — paste to set, clear to remove (text-only)">
+                                    <button type="button" class="btn btn--link btn--small"
+                                            x-show="article.image_url" x-cloak
+                                            @click="article.image_url = ''; saveArticleField(article)">Remove image</button>
+                                </div>
+                            </div>
+
                             <textarea class="review-article__summary" rows="4"
                                       x-model="article.summary"
                                       x-init="autoResize($el, 80)"

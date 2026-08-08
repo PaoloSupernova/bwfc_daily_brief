@@ -910,6 +910,31 @@ code {
 
 .dash__report-btn { margin-left: auto; text-decoration: none; }
 
+/* Article image fields (editor + review) */
+.img-field { display: flex; flex-direction: column; gap: 8px; }
+.img-field__preview img {
+    max-width: 240px;
+    max-height: 150px;
+    border-radius: 6px;
+    display: block;
+    border: 1px solid var(--line, #E4E4E7);
+}
+.img-field__none { font-size: 13px; color: var(--ink-subtle); }
+.img-field__controls { display: flex; gap: 10px; align-items: center; }
+.input--small { font-size: 13px; padding: 6px 10px; }
+
+.review-article__image { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 8px; }
+.review-article__image img {
+    width: 96px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid var(--line, #E4E4E7);
+    flex-shrink: 0;
+}
+.review-article__image-controls { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.review-article__imgurl { margin-bottom: 0; }
+
 /* Sentiment override controls (editor + review) */
 .sentiment-choice, .review-article__sentiment { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .review-article__sentiment { margin-left: 4px; }

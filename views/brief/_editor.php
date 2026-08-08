@@ -180,6 +180,21 @@ $jsState = [
             </div>
 
             <div class="field">
+                <label class="field__label">Image</label>
+                <div class="img-field">
+                    <div class="img-field__preview" x-show="pending.image_url" x-cloak>
+                        <img :src="pending.image_url" alt="" @error="pending.image_url = ''">
+                    </div>
+                    <div class="img-field__none" x-show="!pending.image_url" x-cloak>No image detected &mdash; this story will show as text only.</div>
+                    <div class="img-field__controls">
+                        <input type="url" class="input input--small" x-model="pending.image_url" placeholder="Paste an image URL to use instead">
+                        <button type="button" class="btn btn--link btn--small" x-show="pending.image_url" @click="pending.image_url = ''">Remove</button>
+                    </div>
+                </div>
+                <p class="field__hint">Auto-detected from the article. Remove it or paste a different image URL.</p>
+            </div>
+
+            <div class="field">
                 <label class="field__label">
                     Byline
                     <span class="field__label-meta" x-show="!pending.byline" x-cloak>&middot; none detected &mdash; Unassigned</span>

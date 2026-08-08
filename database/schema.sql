@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS brief_articles (
     section_id INT UNSIGNED NOT NULL,
     display_order INT NOT NULL DEFAULT 0,
     url VARCHAR(2048) NOT NULL,
+    image_url VARCHAR(2048) NULL,
     outlet_name VARCHAR(255) NOT NULL,
     byline_raw VARCHAR(500) NULL,
     headline VARCHAR(500) NOT NULL,

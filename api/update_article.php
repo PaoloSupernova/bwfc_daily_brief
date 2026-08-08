@@ -37,6 +37,9 @@ if (isset($input['summary'])) {
 if (array_key_exists('topic', $input)) {
     $fields['topic'] = trim((string)$input['topic']);
 }
+if (array_key_exists('image_url', $input)) {
+    $fields['image_url'] = trim((string)$input['image_url']);
+}
 
 $bylineProvided = array_key_exists('byline', $input);
 $peopleProvided = array_key_exists('people', $input);
