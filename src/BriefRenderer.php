@@ -105,20 +105,14 @@ final class BriefRenderer
         $headline = htmlspecialchars((string)$article['headline'], ENT_QUOTES);
         $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
         $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
-
         $imageSrc = self::articleImageSrc($article);
 
-        $h = '<div style="margin-bottom: 18px; overflow: hidden;">';
-        if ($imageSrc !== '') {
-            $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
-            $h .= '<img src="' . $imgSrc . '" alt="" width="140" referrerpolicy="no-referrer" style="width: 140px; float: right; margin: 2px 0 8px 14px; border-radius: 4px;">';
-        }
-        $h .= '<div style="font-size: 13pt; margin-bottom: 6px;">';
-        $h .= '<span style="font-weight: bold; color: ' . self::NAVY . ';">' . $outlet . ':</span> ';
-        $h .= '<a href="' . $url . '" style="color: ' . self::BLUE . '; font-weight: bold; text-decoration: underline;">' . $headline . '</a>';
-        $h .= '</div>';
-        $h .= '<div style="font-size: 12pt; color: #333333; line-height: 1.45;">' . $summary . '</div>';
+        // Outlet kicker, large headline, comfortable body.
+        $kicker = '<div style="font-family: ' . self::FONT_HEAD . '; font-size: 9.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.2px; color: ' . self::RED . '; margin: 0 0 5px;">' . $outlet . '</div>';
+        $headlineHtml = '<a href="' . $url . '" style="font-family: ' . self::FONT_HEAD . '; font-size: 17pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.22; display: block; margin: 0 0 10px;">' . $headline . '</a>';
+        $summaryHtml = '<div style="font-size: 12.5pt; color: #2B2B2B; line-height: 1.62;">' . $summary . '</div>';
 
+        $moreHtml = '';
         if (!empty($article['related'])) {
             $links = [];
             foreach ($article['related'] as $r) {
@@ -127,14 +121,28 @@ final class BriefRenderer
                 $ru = htmlspecialchars((string)$r['url'], ENT_QUOTES);
                 $links[] = '<a href="' . $ru . '" style="color: ' . self::BLUE . '; text-decoration: underline;">' . $ro . ': ' . $rh . '</a>';
             }
-            $h .= '<div style="font-size: 11pt; color: #555555; margin-top: 5px;">';
-            $h .= '<span style="font-weight: 700; color: ' . self::NAVY . ';">More:</span> ';
-            $h .= implode(' <span style="color: #BBBBBB; margin: 0 3px;">|</span> ', $links);
-            $h .= '</div>';
+            $moreHtml = '<div style="font-size: 11pt; color: #555555; margin-top: 8px;">'
+                . '<span style="font-weight: 700; color: ' . self::NAVY . ';">More:</span> '
+                . implode(' <span style="color: #BBBBBB; margin: 0 3px;">|</span> ', $links)
+                . '</div>';
         }
 
-        $h .= '</div>';
-        return $h;
+        $textCell = $kicker . $headlineHtml . $summaryHtml . $moreHtml;
+
+        $divider = '<div style="border-bottom: 1px solid #E6E6EA; margin: 0 0 22px;"></div>';
+
+        if ($imageSrc !== '') {
+            $img = htmlspecialchars($imageSrc, ENT_QUOTES);
+            $imageCell = '<img src="' . $img . '" alt="" width="220" referrerpolicy="no-referrer" '
+                . 'style="width: 220px; max-width: 220px; height: auto; display: block; border-radius: 10px; border: 1px solid #E2E2E6;">';
+
+            return '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 22px;"><tr>'
+                . '<td valign="top" style="padding-right: 24px;">' . $textCell . '</td>'
+                . '<td valign="top" width="220" style="width: 220px;">' . $imageCell . '</td>'
+                . '</tr></table>' . $divider;
+        }
+
+        return '<div style="margin: 0 0 22px;">' . $textCell . '</div>' . $divider;
     }
 
     private static function groupBySection(array $articles): array
@@ -315,14 +323,15 @@ final class BriefRenderer
             .exec-summary { background: #F4F4F6; padding: 14pt 18pt; margin: 0 22pt 20pt; border-left: 3pt solid ' . self::RED . '; page-break-inside: avoid; }
             .exec-summary-label { font-family: nippo, Arial, sans-serif; font-size: 9pt; font-weight: bold; color: ' . self::NAVY . '; letter-spacing: 1pt; margin-bottom: 6pt; }
             .exec-summary p { margin: 0 0 8pt; orphans: 3; widows: 3; }
-            .section { margin: 0 22pt 18pt; }
-            .section-heading { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::BLUE . '; border-bottom: 1.5pt solid ' . self::BLUE . '; padding-bottom: 3pt; margin-bottom: 10pt; letter-spacing: 0.8pt; page-break-after: avoid; }
-            .article { margin-bottom: 12pt; page-break-inside: avoid; orphans: 3; widows: 3; }
-            .article-head { margin-bottom: 4pt; page-break-after: avoid; }
-            .article-outlet { font-weight: bold; color: ' . self::NAVY . '; }
-            .article-headline { color: ' . self::BLUE . '; font-weight: bold; text-decoration: underline; }
-            .article-summary { color: #333333; line-height: 1.4; orphans: 3; widows: 3; }
-            .article-more { font-size: 9.5pt; color: #555555; margin-top: 4pt; }
+            .section { margin: 0 22pt 20pt; }
+            .section-heading { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::BLUE . '; border-bottom: 1.5pt solid ' . self::BLUE . '; padding-bottom: 3pt; margin-bottom: 12pt; letter-spacing: 0.8pt; page-break-after: avoid; }
+            .article { width: 100%; margin-bottom: 14pt; page-break-inside: avoid; }
+            .article-divider { border-bottom: 0.75pt solid #E6E6EA; margin: 0 0 14pt; }
+            .article-kicker { font-family: nippo, Arial, sans-serif; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1pt; color: ' . self::RED . '; margin-bottom: 3pt; }
+            .article-headline { font-family: nippo, Arial, sans-serif; font-size: 13.5pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.2; margin-bottom: 6pt; }
+            .article-summary { color: #2B2B2B; font-size: 10.5pt; line-height: 1.55; orphans: 3; widows: 3; }
+            .article-img { width: 150pt; border: 0.75pt solid #E2E2E6; border-radius: 6pt; }
+            .article-more { font-size: 9.5pt; color: #555555; margin-top: 5pt; }
             .article-more-label { font-weight: 700; color: ' . self::NAVY . '; }
             .article-more-link { color: ' . self::BLUE . '; text-decoration: underline; }
             .article-more-sep { color: #BBBBBB; margin: 0 3pt; }
@@ -357,18 +366,9 @@ final class BriefRenderer
                 $headline = htmlspecialchars((string)$article['headline'], ENT_QUOTES);
                 $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
                 $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
-
                 $imageSrc = self::articleImageSrc($article);
 
-                $html .= '<div class="article">';
-                if ($imageSrc !== '') {
-                    $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
-                    $html .= '<img src="' . $imgSrc . '" class="article-image" style="width: 96pt; float: right; margin: 0 0 4pt 8pt;">';
-                }
-                $html .= '<div class="article-head"><span class="article-outlet">' . $outlet . ':</span> ';
-                $html .= '<a href="' . $url . '" class="article-headline">' . $headline . '</a></div>';
-                $html .= '<div class="article-summary">' . $summary . '</div>';
-
+                $moreHtml = '';
                 if (!empty($article['related'])) {
                     $links = [];
                     foreach ($article['related'] as $r) {
@@ -377,13 +377,23 @@ final class BriefRenderer
                         $ru = htmlspecialchars((string)$r['url'], ENT_QUOTES);
                         $links[] = '<a href="' . $ru . '" class="article-more-link">' . $ro . ': ' . $rh . '</a>';
                     }
-                    $html .= '<div class="article-more"><span class="article-more-label">More:</span> ';
-                    $html .= implode(' <span class="article-more-sep">|</span> ', $links);
-                    $html .= '</div>';
+                    $moreHtml = '<div class="article-more"><span class="article-more-label">More:</span> '
+                        . implode(' <span class="article-more-sep">|</span> ', $links) . '</div>';
                 }
 
-                $html .= '<div style="clear: both;"></div>';
-                $html .= '</div>';
+                $textCell = '<div class="article-kicker">' . $outlet . '</div>'
+                    . '<a href="' . $url . '" class="article-headline">' . $headline . '</a>'
+                    . '<div class="article-summary">' . $summary . '</div>'
+                    . $moreHtml;
+
+                $html .= '<table class="article"><tr>';
+                $html .= '<td valign="top" style="padding-right: 14pt;">' . $textCell . '</td>';
+                if ($imageSrc !== '') {
+                    $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
+                    $html .= '<td valign="top" width="150" style="width: 150pt;"><img src="' . $imgSrc . '" class="article-img"></td>';
+                }
+                $html .= '</tr></table>';
+                $html .= '<div class="article-divider"></div>';
             }
             $html .= '</div>';
         }
