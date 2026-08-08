@@ -93,6 +93,34 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 </ol>
             </div>
 
+            <!-- Most-covered people -->
+            <div class="insights-sections" x-show="insights?.metrics_json?.metrics?.top_people?.length > 0">
+                <h3 class="insights-outlets__title">Most-covered people</h3>
+                <ol class="insights-outlets__list">
+                    <template x-for="p in (insights?.metrics_json?.metrics?.top_people ?? [])" :key="p.name">
+                        <li class="insights-outlets__item">
+                            <span class="insights-outlets__name" x-text="p.name"></span>
+                            <span class="insights-outlets__count">
+                                <span x-text="p.count"></span><span x-show="p.negative > 0" x-cloak class="insights-neg" x-text="' · ' + p.negative + ' neg'"></span>
+                            </span>
+                        </li>
+                    </template>
+                </ol>
+            </div>
+
+            <!-- Coverage by topic -->
+            <div class="insights-sections" x-show="insights?.metrics_json?.metrics?.topic_breakdown?.length > 0">
+                <h3 class="insights-outlets__title">By topic</h3>
+                <ol class="insights-outlets__list">
+                    <template x-for="t in (insights?.metrics_json?.metrics?.topic_breakdown ?? [])" :key="t.slug">
+                        <li class="insights-outlets__item">
+                            <span class="insights-outlets__name" x-text="t.label"></span>
+                            <span class="insights-outlets__count" x-text="t.count"></span>
+                        </li>
+                    </template>
+                </ol>
+            </div>
+
             <!-- Week-on-week comparison -->
             <div class="insights-comparison" x-show="insights?.metrics_json?.comparison">
                 <template x-if="insights?.metrics_json?.comparison?.prior_total_articles > 0">

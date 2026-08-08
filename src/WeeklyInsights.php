@@ -133,6 +133,56 @@ final class WeeklyInsights
             ['s' => $weekStart, 'e' => $weekEnd]
         );
 
+        // Sentiment split (standalone articles).
+        $sentiment = ['positive' => 0, 'neutral' => 0, 'negative' => 0];
+        foreach (Database::select(
+            "SELECT a.sentiment, COUNT(*) AS n FROM brief_articles a
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL AND b.brief_date BETWEEN :s AND :e
+               AND a.sentiment IS NOT NULL AND a.parent_article_id IS NULL
+             GROUP BY a.sentiment",
+            ['s' => $weekStart, 'e' => $weekEnd]
+        ) as $r) {
+            if (isset($sentiment[$r['sentiment']])) {
+                $sentiment[$r['sentiment']] = (int)$r['n'];
+            }
+        }
+
+        // Most-covered people, with their negative count.
+        $topPeople = Database::select(
+            "SELECT p.name, p.role, COUNT(DISTINCT a.id) AS n,
+                    SUM(a.sentiment = 'negative') AS negative
+             FROM people p
+             JOIN article_people ap ON ap.person_id = p.id
+             JOIN brief_articles a ON a.id = ap.article_id
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL AND b.brief_date BETWEEN :s AND :e
+             GROUP BY p.id, p.name, p.role ORDER BY n DESC LIMIT 5",
+            ['s' => $weekStart, 'e' => $weekEnd]
+        );
+
+        // Most-active journalists.
+        $topJournalists = Database::select(
+            "SELECT j.name, COUNT(DISTINCT a.id) AS n
+             FROM journalists j
+             JOIN article_journalists aj ON aj.journalist_id = j.id
+             JOIN brief_articles a ON a.id = aj.article_id
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL AND b.brief_date BETWEEN :s AND :e
+             GROUP BY j.id, j.name ORDER BY n DESC LIMIT 5",
+            ['s' => $weekStart, 'e' => $weekEnd]
+        );
+
+        // Topic breakdown.
+        $topicBreakdown = Database::select(
+            "SELECT a.topic, COUNT(*) AS n FROM brief_articles a
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL AND b.brief_date BETWEEN :s AND :e
+               AND a.topic IS NOT NULL AND a.parent_article_id IS NULL
+             GROUP BY a.topic ORDER BY n DESC",
+            ['s' => $weekStart, 'e' => $weekEnd]
+        );
+
         return [
             'total_articles' => $totalArticles,
             'total_briefs' => $totalBriefs,
@@ -142,6 +192,15 @@ final class WeeklyInsights
             'national_pickup_pct' => $pickupPct,
             'top_outlets' => array_map(fn($r) => ['name' => $r['name'], 'count' => (int)$r['n']], $topOutlets),
             'section_breakdown' => array_map(fn($r) => ['name' => $r['name'], 'count' => (int)$r['n']], $sectionBreakdown),
+            'sentiment' => $sentiment,
+            'top_people' => array_map(fn($r) => [
+                'name' => $r['name'], 'role' => (string)$r['role'],
+                'count' => (int)$r['n'], 'negative' => (int)$r['negative'],
+            ], $topPeople),
+            'top_journalists' => array_map(fn($r) => ['name' => $r['name'], 'count' => (int)$r['n']], $topJournalists),
+            'topic_breakdown' => array_map(fn($r) => [
+                'slug' => (string)$r['topic'], 'label' => Topics::label((string)$r['topic']), 'count' => (int)$r['n'],
+            ], $topicBreakdown),
         ];
     }
 
@@ -239,6 +298,34 @@ final class WeeklyInsights
         foreach ($m['section_breakdown'] as $s) {
             $lines[] = "    - {$s['name']}: {$s['count']}";
         }
+
+        if (!empty($m['sentiment'])) {
+            $sen = $m['sentiment'];
+            $lines[] = "- Sentiment (of articles about the club): {$sen['positive']} positive, {$sen['neutral']} neutral, {$sen['negative']} negative";
+        }
+
+        if (!empty($m['topic_breakdown'])) {
+            $lines[] = "- Coverage by topic:";
+            foreach ($m['topic_breakdown'] as $t) {
+                $lines[] = "    - {$t['label']}: {$t['count']}";
+            }
+        }
+
+        if (!empty($m['top_people'])) {
+            $lines[] = "- Most-covered people:";
+            foreach ($m['top_people'] as $p) {
+                $neg = $p['negative'] > 0 ? " ({$p['negative']} negative)" : '';
+                $lines[] = "    - {$p['name']} ({$p['role']}): {$p['count']} articles{$neg}";
+            }
+        }
+
+        if (!empty($m['top_journalists'])) {
+            $lines[] = "- Most-active journalists:";
+            foreach ($m['top_journalists'] as $j) {
+                $lines[] = "    - {$j['name']}: {$j['count']} articles";
+            }
+        }
+
         return implode("\n", $lines);
     }
 
