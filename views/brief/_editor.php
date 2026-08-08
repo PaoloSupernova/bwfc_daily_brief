@@ -182,12 +182,13 @@ $jsState = [
             <div class="field">
                 <label class="field__label">Image</label>
                 <div class="img-field">
-                    <div class="img-field__preview" x-show="pending.image_url" x-cloak>
-                        <img :src="pending.image_url" alt="" @error="pending.image_url = ''">
+                    <div class="img-field__preview" x-show="pending.image_url && !pending._imgErr" x-cloak>
+                        <img :src="pending.image_url" alt="" referrerpolicy="no-referrer" @error="pending._imgErr = true">
                     </div>
                     <div class="img-field__none" x-show="!pending.image_url" x-cloak>No image detected &mdash; this story will show as text only.</div>
+                    <div class="img-field__none" x-show="pending.image_url && pending._imgErr" x-cloak>Preview couldn't load here &mdash; it may still appear in the PDF, or paste another URL.</div>
                     <div class="img-field__controls">
-                        <input type="url" class="input input--small" x-model="pending.image_url" placeholder="Paste an image URL to use instead">
+                        <input type="url" class="input input--small" x-model="pending.image_url" @input="pending._imgErr = false" placeholder="Paste an image URL to use instead">
                         <button type="button" class="btn btn--link btn--small" x-show="pending.image_url" @click="pending.image_url = ''">Remove</button>
                     </div>
                 </div>

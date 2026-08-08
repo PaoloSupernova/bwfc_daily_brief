@@ -111,7 +111,7 @@ final class BriefRenderer
         $h = '<div style="margin-bottom: 18px; overflow: hidden;">';
         if ($imageUrl !== '') {
             $imgSrc = htmlspecialchars($imageUrl, ENT_QUOTES);
-            $h .= '<img src="' . $imgSrc . '" alt="" width="140" style="width: 140px; float: right; margin: 2px 0 8px 14px; border-radius: 4px;">';
+            $h .= '<img src="' . $imgSrc . '" alt="" width="140" referrerpolicy="no-referrer" style="width: 140px; float: right; margin: 2px 0 8px 14px; border-radius: 4px;">';
         }
         $h .= '<div style="font-size: 13pt; margin-bottom: 6px;">';
         $h .= '<span style="font-weight: bold; color: ' . self::NAVY . ';">' . $outlet . ':</span> ';

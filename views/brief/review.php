@@ -111,13 +111,15 @@ $jsState = [
                                    placeholder="People mentioned — players / staff, comma-separated">
 
                             <div class="review-article__image">
-                                <img x-show="article.image_url" x-cloak :src="article.image_url" alt=""
-                                     @error="article.image_url = ''; saveArticleField(article)">
+                                <img x-show="article.image_url && !article._imgErr" x-cloak :src="article.image_url" alt=""
+                                     referrerpolicy="no-referrer" @error="article._imgErr = true">
                                 <div class="review-article__image-controls">
                                     <input class="review-article__byline review-article__imgurl"
                                            x-model="article.image_url"
+                                           @input="article._imgErr = false"
                                            @blur="saveArticleField(article)"
                                            placeholder="Image URL — paste to set, clear to remove (text-only)">
+                                    <span class="review-article__img-hint" x-show="article.image_url && article._imgErr" x-cloak>Preview couldn't load here — it may still appear in the PDF, or paste another URL.</span>
                                     <button type="button" class="btn btn--link btn--small"
                                             x-show="article.image_url" x-cloak
                                             @click="article.image_url = ''; saveArticleField(article)">Remove image</button>
