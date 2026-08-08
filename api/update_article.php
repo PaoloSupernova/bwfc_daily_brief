@@ -14,6 +14,7 @@ require_once __DIR__ . '/_bootstrap.php';
 use BWFC\DailyBrief\BriefRepository;
 use BWFC\DailyBrief\JournalistRepository;
 use BWFC\DailyBrief\PeopleRepository;
+use BWFC\DailyBrief\ImageCache;
 use BWFC\DailyBrief\StyleGuard;
 use BWFC\DailyBrief\AuditLog;
 
@@ -38,7 +39,10 @@ if (array_key_exists('topic', $input)) {
     $fields['topic'] = trim((string)$input['topic']);
 }
 if (array_key_exists('image_url', $input)) {
-    $fields['image_url'] = trim((string)$input['image_url']);
+    $imageUrl = trim((string)$input['image_url']);
+    $fields['image_url'] = $imageUrl;
+    // Re-cache the new image (empty => clears the cached copy too).
+    $fields['image_cached'] = $imageUrl !== '' ? (ImageCache::cache($imageUrl) ?? '') : '';
 }
 
 $bylineProvided = array_key_exists('byline', $input);

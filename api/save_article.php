@@ -14,6 +14,7 @@ require_once __DIR__ . '/_bootstrap.php';
 use BWFC\DailyBrief\BriefRepository;
 use BWFC\DailyBrief\JournalistRepository;
 use BWFC\DailyBrief\PeopleRepository;
+use BWFC\DailyBrief\ImageCache;
 use BWFC\DailyBrief\AuditLog;
 
 $input = api_input();
@@ -76,6 +77,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'sentiment' => $sentiment,
     'topic' => (string)($input['topic'] ?? ''),
     'image_url' => (string)($input['image_url'] ?? ''),
+    'image_cached' => ImageCache::cache((string)($input['image_url'] ?? '')) ?? '',
 ]);
 
 // Link journalists from the (possibly user-edited) byline.

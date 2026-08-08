@@ -127,14 +127,17 @@ final class BriefRepository
         $imageUrl = isset($data['image_url']) && trim((string)$data['image_url']) !== ''
             ? trim((string)$data['image_url'])
             : null;
+        $imageCached = isset($data['image_cached']) && trim((string)$data['image_cached']) !== ''
+            ? trim((string)$data['image_cached'])
+            : null;
 
         return Database::insert(
             'INSERT INTO brief_articles
-                (brief_id, section_id, display_order, url, image_url, outlet_name, headline,
+                (brief_id, section_id, display_order, url, image_url, image_cached, outlet_name, headline,
                  article_content, summary, summary_original, was_paywall_fallback,
                  parent_article_id, sentiment, topic)
              VALUES
-                (:brief_id, :section_id, :display_order, :url, :image_url, :outlet_name, :headline,
+                (:brief_id, :section_id, :display_order, :url, :image_url, :image_cached, :outlet_name, :headline,
                  :article_content, :summary, :summary_original, :was_paywall_fallback,
                  :parent_article_id, :sentiment, :topic)',
             [
@@ -143,6 +146,7 @@ final class BriefRepository
                 'display_order' => $order,
                 'url' => $data['url'] ?? '',
                 'image_url' => $imageUrl,
+                'image_cached' => $imageCached,
                 'outlet_name' => $data['outlet_name'] ?? 'Unknown',
                 'headline' => $data['headline'] ?? '',
                 'article_content' => $data['article_content'] ?? null,
@@ -180,7 +184,7 @@ final class BriefRepository
             throw new RuntimeException('Brief is sent and locked');
         }
 
-        $allowed = ['headline', 'outlet_name', 'summary', 'section_id', 'topic', 'image_url'];
+        $allowed = ['headline', 'outlet_name', 'summary', 'section_id', 'topic', 'image_url', 'image_cached'];
         $sets = [];
         $params = ['id' => $articleId];
 
@@ -189,7 +193,7 @@ final class BriefRepository
             if ($k === 'topic') {
                 $v = ($v === '' || $v === null) ? null : Topics::normalise((string)$v);
             }
-            if ($k === 'image_url') {
+            if ($k === 'image_url' || $k === 'image_cached') {
                 $v = (is_string($v) && trim($v) !== '') ? trim($v) : null;
             }
             $sets[] = "{$k} = :{$k}";

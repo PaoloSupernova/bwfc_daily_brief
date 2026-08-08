@@ -106,11 +106,11 @@ final class BriefRenderer
         $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
         $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
 
-        $imageUrl = trim((string)($article['image_url'] ?? ''));
+        $imageSrc = self::articleImageSrc($article);
 
         $h = '<div style="margin-bottom: 18px; overflow: hidden;">';
-        if ($imageUrl !== '') {
-            $imgSrc = htmlspecialchars($imageUrl, ENT_QUOTES);
+        if ($imageSrc !== '') {
+            $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
             $h .= '<img src="' . $imgSrc . '" alt="" width="140" referrerpolicy="no-referrer" style="width: 140px; float: right; margin: 2px 0 8px 14px; border-radius: 4px;">';
         }
         $h .= '<div style="font-size: 13pt; margin-bottom: 6px;">';
@@ -358,11 +358,11 @@ final class BriefRenderer
                 $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
                 $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
 
-                $imageUrl = trim((string)($article['image_url'] ?? ''));
+                $imageSrc = self::articleImageSrc($article);
 
                 $html .= '<div class="article">';
-                if ($imageUrl !== '') {
-                    $imgSrc = htmlspecialchars($imageUrl, ENT_QUOTES);
+                if ($imageSrc !== '') {
+                    $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
                     $html .= '<img src="' . $imgSrc . '" class="article-image" style="width: 96pt; float: right; margin: 0 0 4pt 8pt;">';
                 }
                 $html .= '<div class="article-head"><span class="article-outlet">' . $outlet . ':</span> ';
@@ -396,6 +396,23 @@ final class BriefRenderer
     // ============================================================
     // HELPERS
     // ============================================================
+
+    /**
+     * Resolve an article's image to an embeddable src: a base64 data URI from
+     * the locally-cached copy when available (bulletproof in PDF/email), else
+     * the remote URL as a fallback. Empty string when there is no image.
+     */
+    private static function articleImageSrc(array $article): string
+    {
+        $cached = trim((string)($article['image_cached'] ?? ''));
+        if ($cached !== '') {
+            $uri = ImageCache::dataUri($cached);
+            if ($uri !== null) {
+                return $uri;
+            }
+        }
+        return trim((string)($article['image_url'] ?? ''));
+    }
 
     public static function formatDate(string $date): string
     {

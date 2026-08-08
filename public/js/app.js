@@ -809,7 +809,7 @@ function reviewScreen(initial) {
          */
         async saveArticleField(article) {
             try {
-                await apiPost('update_article.php', {
+                const data = await apiPost('update_article.php', {
                     article_id: article.id,
                     headline: article.headline,
                     outlet_name: article.outlet,
@@ -819,9 +819,21 @@ function reviewScreen(initial) {
                     image_url: article.image_url || '',
                     summary: article.summary,
                 });
+                // Re-sync the locally-cached image path the server just produced.
+                if (data && data.article) {
+                    article.image_cached = data.article.image_cached || '';
+                }
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
             }
+        },
+
+        // Prefer the locally-cached copy (reliable, no hotlink) for the preview.
+        imageSrc(article) {
+            if (article.image_cached) {
+                return (window.BWFC_BASE || '') + '/' + article.image_cached;
+            }
+            return article.image_url || '';
         },
 
         async setSentiment(article, value) {
