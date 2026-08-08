@@ -22,6 +22,7 @@ $jsState = [
         'byline' => (string)($a['byline'] ?? ''),
         'people' => (string)($a['people'] ?? ''),
         'topic' => (string)($a['topic'] ?? ''),
+        'sentiment' => (string)($a['sentiment'] ?? ''),
         'headline' => (string)$a['headline'],
         'summary' => (string)$a['summary'],
         'section_id' => (int)$a['section_id'],
@@ -128,6 +129,14 @@ $jsState = [
                                         <option value="<?= htmlspecialchars($t['slug'], ENT_QUOTES) ?>"><?= htmlspecialchars($t['label'], ENT_QUOTES) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+
+                                <div class="review-article__sentiment" title="Sentiment — click to override">
+                                    <template x-for="s in ['positive','neutral','negative']" :key="s">
+                                        <button type="button" class="sentiment-toggle"
+                                                :class="['sentiment-toggle--' + s, article.sentiment === s ? 'is-active' : '']"
+                                                @click="setSentiment(article, s)" x-text="s"></button>
+                                    </template>
+                                </div>
 
                                 <div class="review-article__buttons">
                                     <button type="button" class="icon-btn" title="Move up" @click="moveUp(article)">&uarr;</button>

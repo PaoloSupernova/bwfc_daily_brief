@@ -819,6 +819,19 @@ function reviewScreen(initial) {
             }
         },
 
+        async setSentiment(article, value) {
+            const prev = article.sentiment;
+            if (prev === value) return;
+            article.sentiment = value;
+            try {
+                await apiPost('update_sentiment.php', { article_id: article.id, sentiment: value });
+                this.flash('Sentiment updated');
+            } catch (err) {
+                article.sentiment = prev;
+                this.statusMessage = 'Error: ' + err.message;
+            }
+        },
+
         async changeSection(article) {
             const newSectionId = parseInt(article.section_id, 10);
             const newSection = this.sections.find(s => s.id === newSectionId);

@@ -910,6 +910,10 @@ code {
 
 .dash__report-btn { margin-left: auto; text-decoration: none; }
 
+/* Sentiment override controls (editor + review) */
+.sentiment-choice, .review-article__sentiment { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.review-article__sentiment { margin-left: 4px; }
+
 /* Reputation alerts (dashboard banner) */
 .alerts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .alert {

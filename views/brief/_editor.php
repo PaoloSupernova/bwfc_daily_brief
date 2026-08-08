@@ -218,6 +218,18 @@ $jsState = [
             </div>
 
             <div class="field">
+                <label class="field__label">Sentiment</label>
+                <div class="sentiment-choice">
+                    <template x-for="s in ['positive','neutral','negative']" :key="s">
+                        <button type="button" class="sentiment-toggle"
+                                :class="['sentiment-toggle--' + s, pending.sentiment === s ? 'is-active' : '']"
+                                @click="pending.sentiment = s" x-text="s"></button>
+                    </template>
+                </div>
+                <p class="field__hint">Auto-detected &mdash; click to override before adding.</p>
+            </div>
+
+            <div class="field">
                 <label class="field__label">
                     Summary
                     <span class="field__label-meta" x-show="pending.edited">&middot; Edited</span>
