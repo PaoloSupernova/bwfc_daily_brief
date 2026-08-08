@@ -125,7 +125,7 @@ final class BriefRenderer
         $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
 
         $kicker = '<div style="font-family: ' . self::FONT_HEAD . '; font-size: 9.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.2px; color: ' . self::RED . '; margin: 0 0 5px;">' . $outlet . '</div>';
-        $headlineHtml = '<a href="' . $url . '" style="font-family: ' . self::FONT_HEAD . '; font-size: 16pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.24; display: block; margin: 0 0 9px;">' . $headline . '</a>';
+        $headlineHtml = '<a href="' . $url . '" style="font-family: ' . self::FONT_HEAD . '; font-size: 16pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.24; display: block; margin: 0 0 14px;">' . $headline . '</a>';
         $summaryHtml = '<div style="font-size: 12pt; color: #2B2B2B; line-height: 1.6;">' . $summary . '</div>';
 
         $moreHtml = '';
@@ -147,15 +147,20 @@ final class BriefRenderer
         $inner = '';
 
         if ($mode === 'hero' && $imageSrc !== '') {
-            $inner = '<img src="' . $img . '" alt="" referrerpolicy="no-referrer" '
-                . 'style="width: 100%; max-width: 100%; height: auto; display: block; border-radius: 8px; margin: 0 0 14px;">'
-                . $kicker . $headlineHtml . $summaryHtml . $moreHtml;
+            // Smaller hero: capped width, sits above the text.
+            $inner = $kicker . $headlineHtml
+                . '<img src="' . $img . '" alt="" referrerpolicy="no-referrer" '
+                . 'style="width: 100%; max-width: 420px; height: auto; display: block; border-radius: 8px; margin: 0 0 14px;">'
+                . $summaryHtml . $moreHtml;
         } elseif (($mode === 'left' || $mode === 'right') && $imageSrc !== '') {
+            // Headline spans full width; image floats and the summary flows tight
+            // around it, so there's no wasted space.
             $float = $mode === 'left' ? 'left' : 'right';
-            $margin = $mode === 'left' ? 'margin: 3px 16px 6px 0;' : 'margin: 3px 0 6px 16px;';
-            $imgTag = '<img src="' . $img . '" alt="" width="165" referrerpolicy="no-referrer" '
-                . 'style="width: 165px; float: ' . $float . '; ' . $margin . ' border-radius: 8px; border: 1px solid #E2E2E6;">';
-            $inner = $imgTag . $kicker . $headlineHtml . $summaryHtml . $moreHtml . '<div style="clear: both; font-size: 0; line-height: 0;">&nbsp;</div>';
+            $margin = $mode === 'left' ? 'margin: 2px 16px 4px 0;' : 'margin: 2px 0 4px 16px;';
+            $imgTag = '<img src="' . $img . '" alt="" width="160" referrerpolicy="no-referrer" '
+                . 'style="width: 160px; float: ' . $float . '; ' . $margin . ' border-radius: 8px; border: 1px solid #E2E2E6;">';
+            $inner = $kicker . $headlineHtml . $imgTag . $summaryHtml . $moreHtml
+                . '<div style="clear: both; font-size: 0; line-height: 0;">&nbsp;</div>';
         } else {
             $inner = $kicker . $headlineHtml . $summaryHtml . $moreHtml;
         }
@@ -347,9 +352,9 @@ final class BriefRenderer
             .section-heading { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::BLUE . '; border-bottom: 1.5pt solid ' . self::BLUE . '; padding-bottom: 3pt; margin-bottom: 12pt; letter-spacing: 0.8pt; page-break-after: avoid; }
             .article-card { background: #F5F6F8; border: 0.5pt solid #ECEEF1; border-radius: 6pt; padding: 11pt 13pt; margin-bottom: 11pt; page-break-inside: avoid; }
             .article-kicker { font-family: nippo, Arial, sans-serif; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1pt; color: ' . self::RED . '; margin-bottom: 3pt; }
-            .article-headline { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.2; margin-bottom: 6pt; }
+            .article-headline { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.2; margin-bottom: 9pt; }
             .article-summary { color: #2B2B2B; font-size: 10.5pt; line-height: 1.55; orphans: 3; widows: 3; }
-            .article-img-hero { width: 100%; border-radius: 5pt; margin-bottom: 7pt; }
+            .article-img-hero { width: 300pt; border-radius: 5pt; margin-bottom: 7pt; }
             .article-img-side-r { width: 120pt; border: 0.5pt solid #E2E2E6; border-radius: 5pt; float: right; margin: 0 0 6pt 10pt; }
             .article-img-side-l { width: 120pt; border: 0.5pt solid #E2E2E6; border-radius: 5pt; float: left; margin: 0 10pt 6pt 0; }
             .article-more { font-size: 9.5pt; color: #555555; margin-top: 5pt; }
@@ -423,12 +428,14 @@ final class BriefRenderer
 
                 $html .= '<div class="article-card">';
                 if ($mode === 'hero') {
-                    $html .= '<img src="' . $imgSrc . '" class="article-img-hero">'
-                        . $kicker . $headlineTag . $summaryTag . $moreHtml;
+                    $html .= $kicker . $headlineTag
+                        . '<img src="' . $imgSrc . '" class="article-img-hero">'
+                        . $summaryTag . $moreHtml;
                 } elseif ($mode === 'left' || $mode === 'right') {
                     $cls = $mode === 'left' ? 'article-img-side-l' : 'article-img-side-r';
-                    $html .= '<img src="' . $imgSrc . '" class="' . $cls . '">'
-                        . $kicker . $headlineTag . $summaryTag . $moreHtml
+                    $html .= $kicker . $headlineTag
+                        . '<img src="' . $imgSrc . '" class="' . $cls . '">'
+                        . $summaryTag . $moreHtml
                         . '<div style="clear: both;"></div>';
                 } else {
                     $html .= $kicker . $headlineTag . $summaryTag . $moreHtml;
