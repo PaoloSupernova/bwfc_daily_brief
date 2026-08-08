@@ -52,6 +52,7 @@ if ($briefId > 0 && !$skipDuplicateCheck) {
 $summary   = $summariser->summariseArticle($headline, $outlet, $content);
 $section   = $summariser->suggestSection($headline, $outlet, $content);
 $sentiment = $summariser->classifySentiment($headline, $summary);
+$topic     = $summariser->suggestTopic($headline, $outlet, $content);
 
 $violations = StyleGuard::check($summary);
 
@@ -67,5 +68,6 @@ api_success([
     'summary'          => $summary,
     'suggested_section'=> $section,
     'sentiment'        => $sentiment,
+    'suggested_topic'  => $topic,
     'style_check'      => $violations,
 ]);

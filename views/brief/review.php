@@ -21,6 +21,7 @@ $jsState = [
         'outlet' => (string)$a['outlet_name'],
         'byline' => (string)($a['byline'] ?? ''),
         'people' => (string)($a['people'] ?? ''),
+        'topic' => (string)($a['topic'] ?? ''),
         'headline' => (string)$a['headline'],
         'summary' => (string)$a['summary'],
         'section_id' => (int)$a['section_id'],
@@ -119,6 +120,13 @@ $jsState = [
                                     <template x-for="s in sections" :key="s.id">
                                         <option :value="s.id" x-text="s.name"></option>
                                     </template>
+                                </select>
+
+                                <select class="select select--small" x-model="article.topic" @change="saveArticleField(article)" title="Topic">
+                                    <option value="">— topic —</option>
+                                    <?php foreach (\BWFC\DailyBrief\Topics::all() as $t): ?>
+                                        <option value="<?= htmlspecialchars($t['slug'], ENT_QUOTES) ?>"><?= htmlspecialchars($t['label'], ENT_QUOTES) ?></option>
+                                    <?php endforeach; ?>
                                 </select>
 
                                 <div class="review-article__buttons">

@@ -34,6 +34,9 @@ if (isset($input['outlet_name'])) {
 if (isset($input['summary'])) {
     $fields['summary'] = trim((string)$input['summary']);
 }
+if (array_key_exists('topic', $input)) {
+    $fields['topic'] = trim((string)$input['topic']);
+}
 
 $bylineProvided = array_key_exists('byline', $input);
 $peopleProvided = array_key_exists('people', $input);

@@ -208,6 +208,16 @@ $jsState = [
             </div>
 
             <div class="field">
+                <label class="field__label">Topic</label>
+                <select class="select" x-model="pending.topic">
+                    <?php foreach (\BWFC\DailyBrief\Topics::all() as $t): ?>
+                        <option value="<?= htmlspecialchars($t['slug'], ENT_QUOTES) ?>"><?= htmlspecialchars($t['label'], ENT_QUOTES) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="field__hint">What the story is about. Auto-detected &mdash; change if needed.</p>
+            </div>
+
+            <div class="field">
                 <label class="field__label">
                     Summary
                     <span class="field__label-meta" x-show="pending.edited">&middot; Edited</span>

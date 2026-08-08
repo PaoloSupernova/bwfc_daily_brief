@@ -74,6 +74,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'was_paywall_fallback' => !empty($input['was_paywall_fallback']),
     'parent_article_id' => $parentArticleId,
     'sentiment' => $sentiment,
+    'topic' => (string)($input['topic'] ?? ''),
 ]);
 
 // Link journalists from the (possibly user-edited) byline.

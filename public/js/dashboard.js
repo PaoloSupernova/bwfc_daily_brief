@@ -14,6 +14,7 @@ function dashboardScreen() {
         localVsNational: { local: 0, national: 0 },
         sentimentData: { positive: 0, neutral: 0, negative: 0 },
         wordCloud: [],
+        topicBreakdown: [],
         recentBriefs: [],
 
         // Sentiment drill-down panel
@@ -39,6 +40,7 @@ function dashboardScreen() {
                 this.localVsNational = data.local_vs_national || { local: 0, national: 0 };
                 this.sentimentData = data.sentiment || { positive: 0, neutral: 0, negative: 0 };
                 this.wordCloud = data.word_cloud || [];
+                this.topicBreakdown = data.topic_breakdown || [];
                 this.recentBriefs = data.recent_briefs || [];
 
                 // Render after DOM updates so canvases exist
@@ -445,6 +447,15 @@ function dashboardScreen() {
             const total = this.sentimentTotal();
             if (total === 0) return 0;
             return Math.round((n / total) * 100);
+        },
+
+        topicMax() {
+            return this.topicBreakdown.reduce((m, t) => Math.max(m, t.value), 0);
+        },
+
+        topicBarPct(n) {
+            const max = this.topicMax();
+            return max === 0 ? 0 : Math.round((n / max) * 100);
         },
     };
 }

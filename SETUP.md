@@ -132,10 +132,11 @@ Still in phpMyAdmin, select the `bwfc_daily_brief` database, click the **Import*
 | 6 | `database/migration_005_harden_summary_prompt.sql` | Updates AI summary prompt for accuracy |
 | 7 | `database/migration_006_journalists.sql` | Journalist byline tracking (journalists table, per-section flag) |
 | 8 | `database/migration_007_people.sql` | People mention tracking + seeds the current squad/staff/execs |
+| 9 | `database/migration_008_topics.sql` | Article topic classification (topic column) |
 
 To import each file: **Import tab → Choose File → select the file → Go**.
 
-> **Skip steps 5–8 if you are restoring from a database export** — see Part 2 (Data Transfer) instead.
+> **Skip steps 5–9 if you are restoring from a database export** — see Part 2 (Data Transfer) instead.
 
 ---
 

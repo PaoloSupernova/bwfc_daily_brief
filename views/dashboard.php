@@ -168,6 +168,27 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             </div>
 
             <div class="dash__panel">
+                <h2 class="heading-section">Coverage by topic</h2>
+                <p class="dash__panel-hint" x-show="topicBreakdown.length === 0" x-cloak>
+                    No topic data in this window yet. Articles added going forward are classified automatically.
+                </p>
+                <div class="topic-bars" x-show="topicBreakdown.length > 0" x-cloak>
+                    <template x-for="t in topicBreakdown" :key="t.slug">
+                        <div class="topic-bars__row">
+                            <span class="topic-bars__label" x-text="t.label"></span>
+                            <div class="topic-bars__track">
+                                <div class="topic-bars__fill" :style="'width: ' + topicBarPct(t.value) + '%'"></div>
+                            </div>
+                            <span class="topic-bars__count" x-text="t.value"></span>
+                            <span class="topic-bars__neg" x-show="t.negative > 0" x-cloak
+                                  :title="t.negative + ' negative'"
+                                  x-text="'▾ ' + t.negative"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="dash__panel">
                 <h2 class="heading-section">Coverage themes</h2>
                 <p class="dash__panel-hint" x-show="wordCloud.length === 0" x-cloak>Not enough text yet to build a word cloud.</p>
                 <div class="word-cloud" x-show="wordCloud.length > 0" x-ref="cloud"></div>

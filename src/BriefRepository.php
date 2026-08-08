@@ -122,15 +122,17 @@ final class BriefRepository
             $sentiment = null;
         }
 
+        $topic = isset($data['topic']) && $data['topic'] !== '' ? Topics::normalise((string)$data['topic']) : null;
+
         return Database::insert(
             'INSERT INTO brief_articles
                 (brief_id, section_id, display_order, url, outlet_name, headline,
                  article_content, summary, summary_original, was_paywall_fallback,
-                 parent_article_id, sentiment)
+                 parent_article_id, sentiment, topic)
              VALUES
                 (:brief_id, :section_id, :display_order, :url, :outlet_name, :headline,
                  :article_content, :summary, :summary_original, :was_paywall_fallback,
-                 :parent_article_id, :sentiment)',
+                 :parent_article_id, :sentiment, :topic)',
             [
                 'brief_id' => $briefId,
                 'section_id' => (int)$data['section_id'],
@@ -144,6 +146,7 @@ final class BriefRepository
                 'was_paywall_fallback' => !empty($data['was_paywall_fallback']) ? 1 : 0,
                 'parent_article_id' => $parentId,
                 'sentiment' => $sentiment,
+                'topic' => $topic,
             ]
         );
     }
@@ -172,12 +175,15 @@ final class BriefRepository
             throw new RuntimeException('Brief is sent and locked');
         }
 
-        $allowed = ['headline', 'outlet_name', 'summary', 'section_id'];
+        $allowed = ['headline', 'outlet_name', 'summary', 'section_id', 'topic'];
         $sets = [];
         $params = ['id' => $articleId];
 
         foreach ($fields as $k => $v) {
             if (!in_array($k, $allowed, true)) continue;
+            if ($k === 'topic') {
+                $v = ($v === '' || $v === null) ? null : Topics::normalise((string)$v);
+            }
             $sets[] = "{$k} = :{$k}";
             $params[$k] = $v;
         }

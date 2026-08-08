@@ -153,6 +153,13 @@ if ($section === null) {
     api_error('No sections configured in the database', 500);
 }
 
+// Classify topic (uses body when we have it, else the headline).
+try {
+    $topic = $summariser->suggestTopic($headline, $outletName, $hasEnoughContent ? $articleContent : $headline);
+} catch (Throwable $e) {
+    $topic = 'other';
+}
+
 // Save article
 $articleId = BriefRepository::addArticle($briefId, [
     'section_id' => (int)$section['id'],
@@ -163,6 +170,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary' => $summary,
     'summary_original' => $summary,
     'was_paywall_fallback' => $wasPaywallFallback,
+    'topic' => $topic,
 ]);
 
 // Link journalists from the detected byline (empty string => Unassigned).

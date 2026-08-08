@@ -124,6 +124,31 @@ PROMPT;
         };
     }
 
+    /**
+     * Classify what the article is about, from the controlled Topics taxonomy.
+     * Returns a valid topic slug (defaults to 'other').
+     */
+    public function suggestTopic(string $headline, string $outlet, string $content): string
+    {
+        $rules = Topics::promptRules();
+        $excerpt = $this->truncateContent($content, 1500);
+
+        $prompt = <<<PROMPT
+You are classifying what a Bolton Wanderers news article is primarily about.
+
+Headline: {$headline}
+Outlet: {$outlet}
+Content excerpt: {$excerpt}
+
+Choose the SINGLE best-fitting topic from this list:
+{$rules}
+
+Reply with ONLY the topic keyword (the word before the colon), lowercase, nothing else.
+PROMPT;
+
+        return Topics::normalise($this->claude->complete($prompt));
+    }
+
     public function suggestSection(string $headline, string $outlet, string $content): string
     {
         $sections = BriefRepository::sections(true);

@@ -18,6 +18,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\Database;
+use BWFC\DailyBrief\Topics;
 
 $input = api_input();
 $window = (int)($input['window'] ?? 30);
@@ -235,6 +236,28 @@ foreach ($sentimentRows as $r) {
 }
 
 // ============================================================
+// TOPIC BREAKDOWN — what coverage is about
+// ============================================================
+
+$topicRows = Database::select(
+    "SELECT a.topic, COUNT(*) AS n,
+            SUM(a.sentiment = 'negative') AS negative
+     FROM brief_articles a
+     JOIN briefs b ON b.id = a.brief_id
+     WHERE b.deleted_at IS NULL AND b.brief_date >= :start
+       AND a.topic IS NOT NULL AND a.parent_article_id IS NULL
+     GROUP BY a.topic
+     ORDER BY n DESC",
+    ['start' => $rangeStart]
+);
+$topicBreakdown = array_map(fn($r) => [
+    'slug'     => (string)$r['topic'],
+    'label'    => Topics::label((string)$r['topic']),
+    'value'    => (int)$r['n'],
+    'negative' => (int)$r['negative'],
+], $topicRows);
+
+// ============================================================
 // RECENT BRIEFS (sidebar)
 // ============================================================
 
@@ -264,6 +287,7 @@ api_success([
     'word_cloud' => $wordFreq,
     'recent_briefs' => $recent,
     'sentiment' => $sentimentCounts,
+    'topic_breakdown' => $topicBreakdown,
 ]);
 
 // ============================================================
