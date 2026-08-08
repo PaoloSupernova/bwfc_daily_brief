@@ -498,6 +498,11 @@ function dashboardScreen() {
             const max = this.topicMax();
             return max === 0 ? 0 : Math.round((n / max) * 100);
         },
+
+        mediaReportUrl() {
+            const base = (window.BWFC_BASE || '').replace(/\/public\/?$/, '');
+            return base + '/api/export_media_report.php?days=' + this.window;
+        },
     };
 }
 

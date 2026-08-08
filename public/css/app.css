@@ -908,6 +908,8 @@ code {
     color: var(--ink);
 }
 
+.dash__report-btn { margin-left: auto; text-decoration: none; }
+
 /* Reputation alerts (dashboard banner) */
 .alerts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .alert {

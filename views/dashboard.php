@@ -37,6 +37,11 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             <button type="button" class="chip" :class="{ 'is-active': window === 90 }" @click="setWindow(90)">90 days</button>
         </div>
         <span class="dash__window-loading" x-show="loading" x-cloak>Loading...</span>
+        <a class="btn btn--secondary btn--small dash__report-btn"
+           :href="mediaReportUrl()" target="_blank"
+           title="Download a shareable media intelligence report for this window">
+            Download report (PDF)
+        </a>
     </div>
 
     <!-- Headline stats: now 5 cards including National Pickup -->
