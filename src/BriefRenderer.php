@@ -41,6 +41,7 @@ final class BriefRenderer
         $html .= self::renderBanner($briefId);
         $html .= self::renderHeader($date);
         $html .= self::renderExecutiveSummary((string)($brief['executive_summary'] ?? ''));
+        $html .= self::renderContents($grouped);
         $html .= self::renderSections($grouped);
         $html .= '</div>';
 
@@ -78,6 +79,56 @@ final class BriefRenderer
         $paragraphs = preg_split('/\n\s*\n/', trim($summary)) ?: [trim($summary)];
         foreach ($paragraphs as $p) {
             $h .= '<p style="margin: 0 0 12px 0;">' . nl2br(htmlspecialchars(trim($p), ENT_QUOTES)) . '</p>';
+        }
+        $h .= '</div>';
+        return $h;
+    }
+
+    private static function sentimentColor(string $sentiment): string
+    {
+        return match ($sentiment) {
+            'positive' => '#2E9E5B',
+            'negative' => '#C0392B',
+            'neutral'  => '#C9A227',
+            default    => '#BBBBBB',
+        };
+    }
+
+    /**
+     * A hyperlinked contents list under the executive summary: each story as
+     * "● Outlet — Headline", grouped by section, the dot coloured by sentiment,
+     * the headline linked to the source article. Inline styles + a coloured ●
+     * glyph so it renders in the browser, Outlook and the PDF alike.
+     */
+    private static function renderContents(array $grouped): string
+    {
+        $hasAny = false;
+        foreach ($grouped as $arts) {
+            if (count($arts) > 0) { $hasAny = true; break; }
+        }
+        if (!$hasAny) return '';
+
+        $h = '<div style="background: #F4F4F6; border-left: 4px solid ' . self::BLUE . '; padding: 14px 20px; margin-bottom: 24px;">';
+        $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 11pt; color: ' . self::NAVY . '; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">In this brief</div>';
+        $h .= '<div style="font-size: 9pt; color: #777777; margin-bottom: 10px;">'
+            . '<span style="color: #2E9E5B;">&#9679;</span> positive &nbsp; '
+            . '<span style="color: #C9A227;">&#9679;</span> neutral &nbsp; '
+            . '<span style="color: #C0392B;">&#9679;</span> negative</div>';
+
+        foreach ($grouped as $sectionName => $articles) {
+            if (count($articles) === 0) continue;
+            $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 9.5pt; color: ' . self::BLUE . '; text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 0 5px;">' . htmlspecialchars((string)$sectionName, ENT_QUOTES) . '</div>';
+            foreach ($articles as $a) {
+                $color = self::sentimentColor((string)($a['sentiment'] ?? ''));
+                $outlet = htmlspecialchars((string)$a['outlet_name'], ENT_QUOTES);
+                $headline = htmlspecialchars((string)$a['headline'], ENT_QUOTES);
+                $url = htmlspecialchars((string)$a['url'], ENT_QUOTES);
+                $h .= '<div style="font-size: 11pt; line-height: 1.5; margin-bottom: 3px;">'
+                    . '<span style="color: ' . $color . '; font-size: 12pt;">&#9679;</span> '
+                    . '<strong style="color: ' . self::NAVY . ';">' . $outlet . '</strong> &mdash; '
+                    . '<a href="' . $url . '" style="color: ' . self::BLUE . '; text-decoration: none;">' . $headline . '</a>'
+                    . '</div>';
+            }
         }
         $h .= '</div>';
         return $h;
@@ -386,6 +437,10 @@ final class BriefRenderer
             }
             $html .= '</div>';
         }
+
+        // Hyperlinked contents list (same box as the HTML version), inset within
+        // the page margins.
+        $html .= '<div style="margin: 0 22pt 16pt;">' . self::renderContents($grouped) . '</div>';
 
         $globalIdx = 0;   // first article in the brief is the lead (hero)
         $sideCounter = 0; // alternates side images left/right

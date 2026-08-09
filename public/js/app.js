@@ -979,7 +979,8 @@ function reviewScreen(initial) {
         },
 
         pdfPreviewUrl() {
-            return this.pdfUrl() + '&preview=1';
+            // Cache-bust so the browser/PDF viewer never serves a stale render.
+            return this.pdfUrl() + '&preview=1&t=' + Date.now();
         },
 
         async markSent() {
