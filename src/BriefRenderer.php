@@ -86,51 +86,30 @@ final class BriefRenderer
 
     /**
      * A small colour-coded sentiment face (green smile / amber flat / red frown)
-     * drawn with GD and returned as a data URI, so it renders reliably in the
-     * browser, Outlook and the PDF (emoji don't render in mPDF's fonts).
+     * as an inline SVG data URI. SVG is vector, needs no GD, and renders in the
+     * browser, Outlook and mPDF alike (emoji don't render in mPDF's fonts).
      */
     private static function sentimentFace(string $sentiment): string
     {
-        static $cache = [];
         $key = in_array($sentiment, ['positive', 'neutral', 'negative'], true) ? $sentiment : 'neutral';
-        if (isset($cache[$key])) {
-            return $cache[$key];
-        }
-        if (!function_exists('imagecreatetruecolor')) {
-            return $cache[$key] = '';
-        }
-
-        $s = 48;
-        $im = imagecreatetruecolor($s, $s);
-        imagesavealpha($im, true);
-        imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
-
-        [$r, $g, $b] = match ($key) {
-            'positive' => [46, 158, 91],
-            'negative' => [192, 57, 43],
-            default    => [201, 162, 39],
+        $color = match ($key) {
+            'positive' => '#2E9E5B',
+            'negative' => '#C0392B',
+            default    => '#C9A227',
         };
-        $face = imagecolorallocate($im, $r, $g, $b);
-        $white = imagecolorallocate($im, 255, 255, 255);
+        $mouth = match ($key) {
+            'positive' => '<path d="M4.6 9.6 Q8 13 11.4 9.6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>',
+            'negative' => '<path d="M4.6 11.6 Q8 8.2 11.4 11.6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>',
+            default    => '<line x1="5" y1="10.6" x2="11" y2="10.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>',
+        };
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">'
+            . '<circle cx="8" cy="8" r="7.5" fill="' . $color . '"/>'
+            . '<circle cx="5.6" cy="6.4" r="1.2" fill="#fff"/>'
+            . '<circle cx="10.4" cy="6.4" r="1.2" fill="#fff"/>'
+            . $mouth
+            . '</svg>';
 
-        imagefilledellipse($im, (int)($s / 2), (int)($s / 2), $s - 4, $s - 4, $face);
-        imagefilledellipse($im, (int)round($s * 0.35), (int)round($s * 0.40), 7, 7, $white);
-        imagefilledellipse($im, (int)round($s * 0.65), (int)round($s * 0.40), 7, 7, $white);
-        imagesetthickness($im, 3);
-        if ($key === 'positive') {
-            imagearc($im, (int)($s / 2), (int)round($s * 0.50), (int)round($s * 0.42), (int)round($s * 0.38), 20, 160, $white);
-        } elseif ($key === 'negative') {
-            imagearc($im, (int)($s / 2), (int)round($s * 0.72), (int)round($s * 0.42), (int)round($s * 0.38), 200, 340, $white);
-        } else {
-            imageline($im, (int)round($s * 0.35), (int)round($s * 0.62), (int)round($s * 0.65), (int)round($s * 0.62), $white);
-        }
-
-        ob_start();
-        imagepng($im);
-        $png = ob_get_clean();
-        imagedestroy($im);
-
-        return $cache[$key] = 'data:image/png;base64,' . base64_encode((string)$png);
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     private static function truncate(string $s, int $max): string
