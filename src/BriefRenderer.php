@@ -36,8 +36,7 @@ final class BriefRenderer
         $grouped = self::groupBySection($articles);
         $briefId = (int)($brief['id'] ?? 0);
 
-        $html = '<!-- brief-render layout v2 (hero 380 / overflow-hidden cards) -->';
-        $html .= '<div style="' . self::BODY_STYLE . ' max-width: 800px;">';
+        $html = '<div style="' . self::BODY_STYLE . ' max-width: 800px;">';
         $html .= self::renderBanner($briefId);
         $html .= self::renderHeader($date);
         $html .= self::renderExecutiveSummary((string)($brief['executive_summary'] ?? ''));
