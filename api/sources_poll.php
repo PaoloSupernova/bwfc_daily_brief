@@ -11,27 +11,19 @@ declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\DiscoveryService;
-use BWFC\DailyBrief\Database;
+use BWFC\DailyBrief\JobLog;
 
 $input = api_input();
 $sourceId = isset($input['source_id']) ? (int)$input['source_id'] : 0;
 $force = !empty($input['force']);
 
-$jobId = Database::insertRow('job_runs', [
-    'job_name' => 'discovery_manual',
-    'started_at' => date('Y-m-d H:i:s'),
-]);
+$jobId = JobLog::start('discovery_manual');
 
 try {
     if ($sourceId > 0) {
         $result = DiscoveryService::pollSource($sourceId);
         $output = "Polled source {$sourceId}: {$result['items_found']} found, {$result['items_new']} new";
-        Database::updateRow('job_runs', [
-            'completed_at' => date('Y-m-d H:i:s'),
-            'success' => 1,
-            'items_processed' => $result['items_new'],
-            'output' => $output,
-        ], ['id' => $jobId]);
+        JobLog::finish($jobId, true, $output, (int)$result['items_new']);
         api_success([
             'mode' => 'single',
             'items_found' => $result['items_found'],
@@ -40,12 +32,7 @@ try {
     } else {
         $result = DiscoveryService::pollAllDue($force);
         $output = "Polled {$result['sources_polled']} sources ({$result['sources_skipped']} skipped). {$result['items_new']} new candidates.";
-        Database::updateRow('job_runs', [
-            'completed_at' => date('Y-m-d H:i:s'),
-            'success' => count($result['errors']) === 0 ? 1 : 0,
-            'items_processed' => $result['items_new'],
-            'output' => $output,
-        ], ['id' => $jobId]);
+        JobLog::finish($jobId, count($result['errors']) === 0, $output, (int)$result['items_new']);
         api_success([
             'mode' => 'all',
             'sources_polled' => $result['sources_polled'],
@@ -56,10 +43,6 @@ try {
         ]);
     }
 } catch (Throwable $e) {
-    Database::updateRow('job_runs', [
-        'completed_at' => date('Y-m-d H:i:s'),
-        'success' => 0,
-        'output' => 'FAILED: ' . $e->getMessage(),
-    ], ['id' => $jobId]);
+    JobLog::finish($jobId, false, 'FAILED: ' . $e->getMessage());
     api_error($e->getMessage(), 500);
 }
