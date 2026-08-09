@@ -16,21 +16,28 @@ final class AuditLog
         array $details = [],
         ?int $userId = null
     ): void {
-        $userId ??= self::currentUserId();
-        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        // Audit logging is best-effort: a logging failure (e.g. the audit_log
+        // table being read-only / needing repair) must never break the actual
+        // user action, so swallow any error here.
+        try {
+            $userId ??= self::currentUserId();
+            $ip = $_SERVER['REMOTE_ADDR'] ?? null;
 
-        Database::insert(
-            'INSERT INTO audit_log (user_id, action, entity_type, entity_id, details, ip_address)
-             VALUES (:u, :a, :et, :ei, :d, :ip)',
-            [
-                'u' => $userId,
-                'a' => $action,
-                'et' => $entityType,
-                'ei' => $entityId,
-                'd' => count($details) > 0 ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
-                'ip' => $ip,
-            ]
-        );
+            Database::insert(
+                'INSERT INTO audit_log (user_id, action, entity_type, entity_id, details, ip_address)
+                 VALUES (:u, :a, :et, :ei, :d, :ip)',
+                [
+                    'u' => $userId,
+                    'a' => $action,
+                    'et' => $entityType,
+                    'ei' => $entityId,
+                    'd' => count($details) > 0 ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
+                    'ip' => $ip,
+                ]
+            );
+        } catch (\Throwable $e) {
+            error_log('AuditLog::record failed: ' . $e->getMessage());
+        }
     }
 
     /**
