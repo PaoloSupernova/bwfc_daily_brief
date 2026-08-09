@@ -84,21 +84,68 @@ final class BriefRenderer
         return $h;
     }
 
-    private static function sentimentColor(string $sentiment): string
+    /**
+     * A small colour-coded sentiment face (green smile / amber flat / red frown)
+     * drawn with GD and returned as a data URI, so it renders reliably in the
+     * browser, Outlook and the PDF (emoji don't render in mPDF's fonts).
+     */
+    private static function sentimentFace(string $sentiment): string
     {
-        return match ($sentiment) {
-            'positive' => '#2E9E5B',
-            'negative' => '#C0392B',
-            'neutral'  => '#C9A227',
-            default    => '#BBBBBB',
+        static $cache = [];
+        $key = in_array($sentiment, ['positive', 'neutral', 'negative'], true) ? $sentiment : 'neutral';
+        if (isset($cache[$key])) {
+            return $cache[$key];
+        }
+        if (!function_exists('imagecreatetruecolor')) {
+            return $cache[$key] = '';
+        }
+
+        $s = 48;
+        $im = imagecreatetruecolor($s, $s);
+        imagesavealpha($im, true);
+        imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
+
+        [$r, $g, $b] = match ($key) {
+            'positive' => [46, 158, 91],
+            'negative' => [192, 57, 43],
+            default    => [201, 162, 39],
         };
+        $face = imagecolorallocate($im, $r, $g, $b);
+        $white = imagecolorallocate($im, 255, 255, 255);
+
+        imagefilledellipse($im, (int)($s / 2), (int)($s / 2), $s - 4, $s - 4, $face);
+        imagefilledellipse($im, (int)round($s * 0.35), (int)round($s * 0.40), 7, 7, $white);
+        imagefilledellipse($im, (int)round($s * 0.65), (int)round($s * 0.40), 7, 7, $white);
+        imagesetthickness($im, 3);
+        if ($key === 'positive') {
+            imagearc($im, (int)($s / 2), (int)round($s * 0.50), (int)round($s * 0.42), (int)round($s * 0.38), 20, 160, $white);
+        } elseif ($key === 'negative') {
+            imagearc($im, (int)($s / 2), (int)round($s * 0.72), (int)round($s * 0.42), (int)round($s * 0.38), 200, 340, $white);
+        } else {
+            imageline($im, (int)round($s * 0.35), (int)round($s * 0.62), (int)round($s * 0.65), (int)round($s * 0.62), $white);
+        }
+
+        ob_start();
+        imagepng($im);
+        $png = ob_get_clean();
+        imagedestroy($im);
+
+        return $cache[$key] = 'data:image/png;base64,' . base64_encode((string)$png);
+    }
+
+    private static function truncate(string $s, int $max): string
+    {
+        $s = trim($s);
+        if (mb_strlen($s) <= $max) {
+            return $s;
+        }
+        return rtrim(mb_substr($s, 0, $max - 1)) . '…';
     }
 
     /**
-     * A hyperlinked contents list under the executive summary: each story as
-     * "● Outlet — Headline", grouped by section, the dot coloured by sentiment,
-     * the headline linked to the source article. Inline styles + a coloured ●
-     * glyph so it renders in the browser, Outlook and the PDF alike.
+     * A hyperlinked contents list under the executive summary: one story per
+     * line — a colour-coded sentiment face, then "Outlet — Headline" (truncated
+     * to a single line), the headline linked to the source article.
      */
     private static function renderContents(array $grouped): string
     {
@@ -108,23 +155,29 @@ final class BriefRenderer
         }
         if (!$hasAny) return '';
 
+        $legendFace = function (string $s): string {
+            $uri = self::sentimentFace($s);
+            return $uri !== '' ? '<img src="' . $uri . '" width="13" height="13" style="vertical-align: middle;">' : '';
+        };
+
         $h = '<div style="background: #F4F4F6; border-left: 4px solid ' . self::BLUE . '; padding: 14px 20px; margin-bottom: 24px;">';
         $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 11pt; color: ' . self::NAVY . '; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">In this brief</div>';
         $h .= '<div style="font-size: 9pt; color: #777777; margin-bottom: 10px;">'
-            . '<span style="color: #2E9E5B;">&#9679;</span> positive &nbsp; '
-            . '<span style="color: #C9A227;">&#9679;</span> neutral &nbsp; '
-            . '<span style="color: #C0392B;">&#9679;</span> negative</div>';
+            . $legendFace('positive') . ' positive &nbsp; '
+            . $legendFace('neutral') . ' neutral &nbsp; '
+            . $legendFace('negative') . ' negative</div>';
 
         foreach ($grouped as $sectionName => $articles) {
             if (count($articles) === 0) continue;
-            $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 9.5pt; color: ' . self::BLUE . '; text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 0 5px;">' . htmlspecialchars((string)$sectionName, ENT_QUOTES) . '</div>';
+            $h .= '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 9.5pt; color: ' . self::BLUE . '; text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 0 4px;">' . htmlspecialchars((string)$sectionName, ENT_QUOTES) . '</div>';
             foreach ($articles as $a) {
-                $color = self::sentimentColor((string)($a['sentiment'] ?? ''));
+                $faceUri = self::sentimentFace((string)($a['sentiment'] ?? ''));
+                $faceImg = $faceUri !== '' ? '<img src="' . $faceUri . '" width="14" height="14" style="vertical-align: middle; margin-right: 7px;">' : '';
                 $outlet = htmlspecialchars((string)$a['outlet_name'], ENT_QUOTES);
-                $headline = htmlspecialchars((string)$a['headline'], ENT_QUOTES);
+                $headline = htmlspecialchars(self::truncate((string)$a['headline'], 64), ENT_QUOTES);
                 $url = htmlspecialchars((string)$a['url'], ENT_QUOTES);
-                $h .= '<div style="font-size: 11pt; line-height: 1.5; margin-bottom: 3px;">'
-                    . '<span style="color: ' . $color . '; font-size: 12pt;">&#9679;</span> '
+                $h .= '<div style="font-size: 11pt; line-height: 1.75; white-space: nowrap; overflow: hidden;">'
+                    . $faceImg
                     . '<strong style="color: ' . self::NAVY . ';">' . $outlet . '</strong> &mdash; '
                     . '<a href="' . $url . '" style="color: ' . self::BLUE . '; text-decoration: none;">' . $headline . '</a>'
                     . '</div>';
@@ -199,10 +252,11 @@ final class BriefRenderer
         $inner = '';
 
         if ($mode === 'hero' && $imageSrc !== '') {
-            // Smaller hero on its own line, below the headline.
+            // Smaller hero on its own line, below the headline (image wrapped in a
+            // block div so it can never sit inline with the headline).
             $inner = $kicker . $headlineHtml
-                . '<img src="' . $img . '" alt="" width="380" referrerpolicy="no-referrer" '
-                . 'style="width: 380px; max-width: 100%; height: auto; display: block; border-radius: 8px; margin: 2px 0 14px;">'
+                . '<div style="margin: 2px 0 14px;"><img src="' . $img . '" alt="" width="380" referrerpolicy="no-referrer" '
+                . 'style="width: 380px; max-width: 100%; height: auto; display: block; border-radius: 8px;"></div>'
                 . $summaryHtml . $moreHtml;
         } elseif (($mode === 'left' || $mode === 'right') && $imageSrc !== '') {
             // Headline full width, then a two-column table (image + summary).
@@ -408,9 +462,10 @@ final class BriefRenderer
             .section-heading { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::BLUE . '; border-bottom: 1.5pt solid ' . self::BLUE . '; padding-bottom: 3pt; margin-bottom: 12pt; letter-spacing: 0.8pt; page-break-after: avoid; }
             .article-card { background: #F5F6F8; border: 0.5pt solid #ECEEF1; border-radius: 6pt; padding: 11pt 13pt; margin-bottom: 11pt; page-break-inside: avoid; }
             .article-kicker { font-family: nippo, Arial, sans-serif; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1pt; color: ' . self::RED . '; margin-bottom: 3pt; }
-            .article-headline { display: block; font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.2; margin-bottom: 9pt; }
+            .article-headline { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::NAVY . '; line-height: 1.2; margin-bottom: 9pt; }
             .article-summary { color: #2B2B2B; font-size: 10.5pt; line-height: 1.55; }
-            .article-img-hero { display: block; width: 280pt; border-radius: 5pt; margin: 2pt 0 8pt; }
+            .article-hero-wrap { margin: 0 0 9pt; }
+            .article-img-hero { width: 280pt; border-radius: 5pt; }
             .article-img-side { width: 140pt; border: 0.5pt solid #E2E2E6; border-radius: 5pt; }
             .article-sidetable { width: 100%; }
             .article-sidetable td { vertical-align: top; }
@@ -449,7 +504,8 @@ final class BriefRenderer
             if (count($items) === 0) continue;
 
             $html .= '<div class="section">';
-            $html .= '<div class="section-heading">' . htmlspecialchars(strtoupper((string)$sectionName), ENT_QUOTES) . '</div>';
+            $headingHtml = '<div class="section-heading">' . htmlspecialchars(strtoupper((string)$sectionName), ENT_QUOTES) . '</div>';
+            $firstInSection = true;
 
             foreach ($items as $article) {
                 $outlet = htmlspecialchars((string)$article['outlet_name'], ENT_QUOTES);
@@ -484,13 +540,15 @@ final class BriefRenderer
 
                 $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
                 $kicker = '<div class="article-kicker">' . $outlet . '</div>';
-                $headlineTag = '<a href="' . $url . '" class="article-headline">' . $headline . '</a>';
+                // Headline wrapped in a block DIV (mPDF doesn't reliably treat an
+                // <a> as display:block, which caused the image to split it).
+                $headlineTag = '<div class="article-headline"><a href="' . $url . '" style="color: ' . self::NAVY . '; text-decoration: none;">' . $headline . '</a></div>';
                 $summaryTag = '<div class="article-summary">' . $summary . '</div>';
 
-                $html .= '<div class="article-card">';
+                $cardHtml = '<div class="article-card">';
                 if ($mode === 'hero') {
-                    $html .= $kicker . $headlineTag
-                        . '<img src="' . $imgSrc . '" class="article-img-hero">'
+                    $cardHtml .= $kicker . $headlineTag
+                        . '<div class="article-hero-wrap"><img src="' . $imgSrc . '" class="article-img-hero"></div>'
                         . $summaryTag . $moreHtml;
                 } elseif ($mode === 'left' || $mode === 'right') {
                     // Two-column table (mPDF renders these cleanly; floats don't).
@@ -498,13 +556,22 @@ final class BriefRenderer
                     $txtPad = $mode === 'left' ? 'padding-left: 12pt;' : 'padding-right: 12pt;';
                     $txtCell = '<td style="' . $txtPad . '">' . $summaryTag . '</td>';
                     $row = $mode === 'left' ? ($imgCell . $txtCell) : ($txtCell . $imgCell);
-                    $html .= $kicker . $headlineTag
+                    $cardHtml .= $kicker . $headlineTag
                         . '<table class="article-sidetable"><tr>' . $row . '</tr></table>'
                         . $moreHtml;
                 } else {
-                    $html .= $kicker . $headlineTag . $summaryTag . $moreHtml;
+                    $cardHtml .= $kicker . $headlineTag . $summaryTag . $moreHtml;
                 }
-                $html .= '</div>';
+                $cardHtml .= '</div>';
+
+                if ($firstInSection) {
+                    // Bind the section heading to its first story so the heading
+                    // is never left stranded at the bottom of a page.
+                    $html .= '<div style="page-break-inside: avoid;">' . $headingHtml . $cardHtml . '</div>';
+                    $firstInSection = false;
+                } else {
+                    $html .= $cardHtml;
+                }
             }
             $html .= '</div>';
         }
