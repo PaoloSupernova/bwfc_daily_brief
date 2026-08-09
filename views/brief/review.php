@@ -183,6 +183,7 @@ $jsState = [
                 <span x-show="copiedFormat !== 'html'">Copy HTML for Outlook</span>
                 <span x-show="copiedFormat === 'html'">Copied</span>
             </button>
+            <a :href="pdfPreviewUrl()" target="_blank" class="btn btn--secondary">Preview PDF</a>
             <a :href="pdfUrl()" target="_blank" class="btn btn--secondary">Download PDF</a>
 
             <div class="export-actions__send" x-show="status === 'draft'">

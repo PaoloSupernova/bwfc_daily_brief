@@ -1127,6 +1127,7 @@ code {
 }
 
 .preview__body { padding: 20px; overflow-x: auto; }
+.brief-iframe { width: 100%; border: 0; min-height: 600px; background: #fff; display: block; }
 
 /* ---------- Archive ---------- */
 .archive-table {

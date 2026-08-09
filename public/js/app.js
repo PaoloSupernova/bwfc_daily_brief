@@ -978,6 +978,10 @@ function reviewScreen(initial) {
             return base + '/api/export_pdf.php?brief_id=' + this.briefId;
         },
 
+        pdfPreviewUrl() {
+            return this.pdfUrl() + '&preview=1';
+        },
+
         async markSent() {
             if (!confirm('Mark this brief as sent? It will be locked from further edits.')) return;
             try {

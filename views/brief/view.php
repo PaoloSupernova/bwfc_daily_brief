@@ -8,7 +8,11 @@ $rendered = BriefRenderer::renderHtml($brief, $articles);
 $subject = BriefRenderer::formatSubjectLine((string)$brief['brief_date']);
 $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 ?>
-<div class="editor" x-data="{ copied: false, copyHtml() { navigator.clipboard.writeText(document.getElementById('rendered-output').innerHTML); this.copied = true; setTimeout(() => this.copied = false, 2000); } }">
+<?php
+$fullDoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank"></head>'
+    . '<body style="margin:0; padding:16px; background:#fff;">' . $rendered . '</body></html>';
+?>
+<div class="editor" x-data="briefView()">
     <header class="editor__header">
         <div>
             <div class="editor__date"><?= (new DateTime($brief['brief_date']))->format('l jS F Y') ?></div>
@@ -37,8 +41,31 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
     <section class="editor__section">
         <div class="preview">
             <div class="preview__body">
-                <div id="rendered-output"><?= $rendered ?></div>
+                <iframe x-ref="frame" class="brief-iframe" @load="resize()"
+                        title="Rendered brief preview"></iframe>
             </div>
         </div>
     </section>
 </div>
+
+<script>
+function briefView() {
+    return {
+        copied: false,
+        briefHtml: <?= json_encode($rendered, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
+        fullDoc: <?= json_encode($fullDoc, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
+        init() { this.$refs.frame.srcdoc = this.fullDoc; },
+        resize() {
+            try {
+                const doc = this.$refs.frame.contentWindow.document;
+                this.$refs.frame.style.height = (doc.body.scrollHeight + 30) + 'px';
+            } catch (e) {}
+        },
+        copyHtml() {
+            navigator.clipboard.writeText(this.briefHtml);
+            this.copied = true;
+            setTimeout(() => this.copied = false, 2000);
+        },
+    };
+}
+</script>

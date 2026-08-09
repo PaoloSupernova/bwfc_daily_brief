@@ -46,9 +46,12 @@ AuditLog::record('pdf_exported', 'brief', $briefId, ['article_count' => count($a
 
 $filename = PdfExporter::filename($brief);
 
+// ?preview=1 opens the PDF inline in the browser's viewer instead of downloading.
+$disposition = !empty($_GET['preview']) ? 'inline' : 'attachment';
+
 header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
+header('Content-Disposition: ' . $disposition . '; filename="' . $filename . '"');
 header('Content-Length: ' . strlen($pdf));
-header('Cache-Control: private, max-age=0, must-revalidate');
-header('Pragma: public');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 echo $pdf;
