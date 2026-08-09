@@ -154,15 +154,17 @@ final class BriefRenderer
                 . 'style="width: 380px; max-width: 100%; height: auto; display: block; border-radius: 8px; margin: 2px 0 14px;">'
                 . $summaryHtml . $moreHtml;
         } elseif (($mode === 'left' || $mode === 'right') && $imageSrc !== '') {
-            // Headline full width; image floats and the summary flows around it.
-            // The card wrapper below sets overflow:hidden so the float is always
-            // contained within this story (never leaks into the next card).
-            $float = $mode === 'left' ? 'left' : 'right';
-            $margin = $mode === 'left' ? 'margin: 2px 16px 6px 0;' : 'margin: 2px 0 6px 16px;';
-            $imgTag = '<img src="' . $img . '" alt="" width="160" referrerpolicy="no-referrer" '
-                . 'style="width: 160px; float: ' . $float . '; ' . $margin . ' border-radius: 8px; border: 1px solid #E2E2E6;">';
-            $inner = $kicker . $headlineHtml . $imgTag . $summaryHtml . $moreHtml
-                . '<div style="clear: both; font-size: 1px; line-height: 0;">&nbsp;</div>';
+            // Headline full width, then a two-column table (image + summary).
+            // Tables render identically in browsers, Outlook and mPDF — no floats.
+            $imgCell = '<td valign="top" width="180" style="width: 180px;">'
+                . '<img src="' . $img . '" alt="" width="180" referrerpolicy="no-referrer" '
+                . 'style="width: 180px; display: block; border-radius: 8px; border: 1px solid #E2E2E6;"></td>';
+            $pad = $mode === 'left' ? 'padding-left: 18px;' : 'padding-right: 18px;';
+            $txtCell = '<td valign="top" style="' . $pad . '">' . $summaryHtml . '</td>';
+            $row = $mode === 'left' ? ($imgCell . $txtCell) : ($txtCell . $imgCell);
+            $inner = $kicker . $headlineHtml
+                . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>' . $row . '</tr></table>'
+                . $moreHtml;
         } else {
             $inner = $kicker . $headlineHtml . $summaryHtml . $moreHtml;
         }
@@ -355,12 +357,13 @@ final class BriefRenderer
             .section-heading { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::BLUE . '; border-bottom: 1.5pt solid ' . self::BLUE . '; padding-bottom: 3pt; margin-bottom: 12pt; letter-spacing: 0.8pt; page-break-after: avoid; }
             .article-card { background: #F5F6F8; border: 0.5pt solid #ECEEF1; border-radius: 6pt; padding: 11pt 13pt; margin-bottom: 11pt; page-break-inside: avoid; }
             .article-kicker { font-family: nippo, Arial, sans-serif; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1pt; color: ' . self::RED . '; margin-bottom: 3pt; }
-            .article-headline { font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.2; margin-bottom: 9pt; }
-            .article-summary { color: #2B2B2B; font-size: 10.5pt; line-height: 1.55; orphans: 3; widows: 3; }
-            .article-img-hero { width: 300pt; border-radius: 5pt; margin-bottom: 7pt; }
-            .article-img-side-r { width: 120pt; border: 0.5pt solid #E2E2E6; border-radius: 5pt; float: right; margin: 0 0 6pt 10pt; }
-            .article-img-side-l { width: 120pt; border: 0.5pt solid #E2E2E6; border-radius: 5pt; float: left; margin: 0 10pt 6pt 0; }
-            .article-more { font-size: 9.5pt; color: #555555; margin-top: 5pt; }
+            .article-headline { display: block; font-family: nippo, Arial, sans-serif; font-size: 13pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.2; margin-bottom: 9pt; }
+            .article-summary { color: #2B2B2B; font-size: 10.5pt; line-height: 1.55; }
+            .article-img-hero { display: block; width: 280pt; border-radius: 5pt; margin: 2pt 0 8pt; }
+            .article-img-side { width: 140pt; border: 0.5pt solid #E2E2E6; border-radius: 5pt; }
+            .article-sidetable { width: 100%; }
+            .article-sidetable td { vertical-align: top; }
+            .article-more { font-size: 9.5pt; color: #555555; margin-top: 6pt; }
             .article-more-label { font-weight: 700; color: ' . self::NAVY . '; }
             .article-more-link { color: ' . self::BLUE . '; text-decoration: underline; }
             .article-more-sep { color: #BBBBBB; margin: 0 3pt; }
@@ -435,11 +438,14 @@ final class BriefRenderer
                         . '<img src="' . $imgSrc . '" class="article-img-hero">'
                         . $summaryTag . $moreHtml;
                 } elseif ($mode === 'left' || $mode === 'right') {
-                    $cls = $mode === 'left' ? 'article-img-side-l' : 'article-img-side-r';
+                    // Two-column table (mPDF renders these cleanly; floats don't).
+                    $imgCell = '<td width="150" style="width: 150pt;"><img src="' . $imgSrc . '" class="article-img-side"></td>';
+                    $txtPad = $mode === 'left' ? 'padding-left: 12pt;' : 'padding-right: 12pt;';
+                    $txtCell = '<td style="' . $txtPad . '">' . $summaryTag . '</td>';
+                    $row = $mode === 'left' ? ($imgCell . $txtCell) : ($txtCell . $imgCell);
                     $html .= $kicker . $headlineTag
-                        . '<img src="' . $imgSrc . '" class="' . $cls . '">'
-                        . $summaryTag . $moreHtml
-                        . '<div style="clear: both;"></div>';
+                        . '<table class="article-sidetable"><tr>' . $row . '</tr></table>'
+                        . $moreHtml;
                 } else {
                     $html .= $kicker . $headlineTag . $summaryTag . $moreHtml;
                 }
