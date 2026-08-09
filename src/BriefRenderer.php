@@ -153,11 +153,13 @@ final class BriefRenderer
                 $faceImg = $faceUri !== '' ? '<img src="' . $faceUri . '" width="14" height="14" style="vertical-align: middle; margin-right: 7px;">' : '';
                 $outlet = htmlspecialchars((string)$a['outlet_name'], ENT_QUOTES);
                 $headline = htmlspecialchars(self::truncate((string)$a['headline'], 64), ENT_QUOTES);
-                $url = htmlspecialchars((string)$a['url'], ENT_QUOTES);
+                $anchor = 'art-' . (int)($a['id'] ?? 0);
+                // Link jumps to the story within the document, keeping the reader
+                // in the brief (rather than straight out to the source URL).
                 $h .= '<div style="font-size: 11pt; line-height: 1.75; white-space: nowrap; overflow: hidden;">'
                     . $faceImg
                     . '<strong style="color: ' . self::NAVY . ';">' . $outlet . '</strong> &mdash; '
-                    . '<a href="' . $url . '" style="color: ' . self::BLUE . '; text-decoration: none;">' . $headline . '</a>'
+                    . '<a href="#' . $anchor . '" style="color: ' . self::BLUE . '; text-decoration: none;">' . $headline . '</a>'
                     . '</div>';
             }
         }
@@ -207,8 +209,9 @@ final class BriefRenderer
         $url = htmlspecialchars((string)$article['url'], ENT_QUOTES);
         $summary = nl2br(htmlspecialchars((string)$article['summary'], ENT_QUOTES));
 
+        $anchor = 'art-' . (int)($article['id'] ?? 0);
         $kicker = '<div style="font-family: ' . self::FONT_HEAD . '; font-size: 9.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.2px; color: ' . self::RED . '; margin: 0 0 5px;">' . $outlet . '</div>';
-        $headlineHtml = '<a href="' . $url . '" style="font-family: ' . self::FONT_HEAD . '; font-size: 16pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.24; display: block; margin: 0 0 14px;">' . $headline . '</a>';
+        $headlineHtml = '<a href="' . $url . '" target="_blank" rel="noopener" style="font-family: ' . self::FONT_HEAD . '; font-size: 16pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.24; display: block; margin: 0 0 14px;">' . $headline . '</a>';
         $summaryHtml = '<div style="font-size: 12pt; color: #2B2B2B; line-height: 1.6;">' . $summary . '</div>';
 
         $moreHtml = '';
@@ -218,7 +221,7 @@ final class BriefRenderer
                 $ro = htmlspecialchars((string)$r['outlet_name'], ENT_QUOTES);
                 $rh = htmlspecialchars((string)$r['headline'], ENT_QUOTES);
                 $ru = htmlspecialchars((string)$r['url'], ENT_QUOTES);
-                $links[] = '<a href="' . $ru . '" style="color: ' . self::BLUE . '; text-decoration: underline;">' . $ro . ': ' . $rh . '</a>';
+                $links[] = '<a href="' . $ru . '" target="_blank" rel="noopener" style="color: ' . self::BLUE . '; text-decoration: underline;">' . $ro . ': ' . $rh . '</a>';
             }
             $moreHtml = '<div style="font-size: 11pt; color: #555555; margin-top: 8px;">'
                 . '<span style="font-weight: 700; color: ' . self::NAVY . ';">More:</span> '
@@ -253,8 +256,9 @@ final class BriefRenderer
         }
 
         // Subtle grey card. overflow:hidden makes the card a self-contained
-        // block so a floated image can never escape into the next story.
-        return '<div style="background: #F5F6F8; border: 1px solid #ECEEF1; border-radius: 10px; padding: 18px 20px; margin: 0 0 14px; overflow: hidden;">'
+        // block so a floated image can never escape into the next story. The id
+        // is the jump target for the contents list.
+        return '<div id="' . $anchor . '" style="background: #F5F6F8; border: 1px solid #ECEEF1; border-radius: 10px; padding: 18px 20px; margin: 0 0 14px; overflow: hidden;">'
             . $inner . '</div>';
     }
 
@@ -517,13 +521,15 @@ final class BriefRenderer
                 $globalIdx++;
 
                 $imgSrc = htmlspecialchars($imageSrc, ENT_QUOTES);
+                $anchor = 'art-' . (int)($article['id'] ?? 0);
                 $kicker = '<div class="article-kicker">' . $outlet . '</div>';
                 // Headline wrapped in a block DIV (mPDF doesn't reliably treat an
                 // <a> as display:block, which caused the image to split it).
                 $headlineTag = '<div class="article-headline"><a href="' . $url . '" style="color: ' . self::NAVY . '; text-decoration: none;">' . $headline . '</a></div>';
                 $summaryTag = '<div class="article-summary">' . $summary . '</div>';
 
-                $cardHtml = '<div class="article-card">';
+                // <a name> is the in-document jump target for the contents list.
+                $cardHtml = '<div class="article-card" id="' . $anchor . '"><a name="' . $anchor . '"></a>';
                 if ($mode === 'hero') {
                     $cardHtml .= $kicker . $headlineTag
                         . '<div class="article-hero-wrap"><img src="' . $imgSrc . '" class="article-img-hero"></div>'

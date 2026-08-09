@@ -9,7 +9,7 @@ $subject = BriefRenderer::formatSubjectLine((string)$brief['brief_date']);
 $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 ?>
 <?php
-$fullDoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank"></head>'
+$fullDoc = '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
     . '<body style="margin:0; padding:16px; background:#fff;">' . $rendered . '</body></html>';
 ?>
 <div class="editor" x-data="briefView()">
