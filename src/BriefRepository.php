@@ -244,6 +244,50 @@ final class BriefRepository
     }
 
     /**
+     * Recent substantive editor edits (AI draft vs the team's final version),
+     * used as few-shot style examples so new summaries match the house style.
+     * Skips placeholders, trivial/unchanged edits, and very short summaries.
+     *
+     * @return array<int, array{original:string, edited:string}>
+     */
+    public static function recentEditExamples(int $limit = 4): array
+    {
+        $limit = max(1, min(10, $limit));
+        $rows = Database::select(
+            "SELECT a.summary_original AS original, a.summary AS edited
+             FROM brief_articles a
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL
+               AND a.was_edited = 1
+               AND a.summary_original IS NOT NULL AND a.summary_original <> ''
+               AND a.summary <> a.summary_original
+               AND a.summary NOT LIKE '[%'
+               AND a.summary_original NOT LIKE '[%'
+               AND CHAR_LENGTH(a.summary) >= 40
+             ORDER BY a.id DESC
+             LIMIT " . (int)$limit
+        );
+        return array_map(static fn($r) => [
+            'original' => (string)$r['original'],
+            'edited'   => (string)$r['edited'],
+        ], $rows);
+    }
+
+    /** Count of usable edit examples (for showing the team the AI is learning). */
+    public static function editExampleCount(): int
+    {
+        return (int)(Database::selectOne(
+            "SELECT COUNT(*) AS n FROM brief_articles a
+             JOIN briefs b ON b.id = a.brief_id
+             WHERE b.deleted_at IS NULL AND a.was_edited = 1
+               AND a.summary_original IS NOT NULL AND a.summary_original <> ''
+               AND a.summary <> a.summary_original
+               AND a.summary NOT LIKE '[%' AND a.summary_original NOT LIKE '[%'
+               AND CHAR_LENGTH(a.summary) >= 40"
+        )['n'] ?? 0);
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public static function articlesForBrief(int $briefId): array

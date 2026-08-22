@@ -91,7 +91,48 @@ PROMPT;
             'content' => $this->truncateContent($content, 6000),
         ]);
 
-        return $this->claude->complete($prompt);
+        // Prepend recent editor edits as few-shot style guidance so summaries
+        // steadily match the team's house style ("learn from my edits").
+        return $this->claude->complete($this->editStyleExamplesBlock() . $prompt);
+    }
+
+    /**
+     * Build a few-shot block of the team's recent AI-draft → editor-final pairs,
+     * instructing the model to mirror their editorial style (not their content).
+     * Returns '' when disabled or when there are no usable edits yet.
+     */
+    private function editStyleExamplesBlock(): string
+    {
+        if (env('SUMMARY_LEARN_FROM_EDITS', true) !== true) {
+            return '';
+        }
+        $limit = (int)env('SUMMARY_EDIT_EXAMPLES', 4);
+        if ($limit < 1) {
+            return '';
+        }
+
+        $examples = BriefRepository::recentEditExamples($limit);
+        if (count($examples) === 0) {
+            return '';
+        }
+
+        $block = "HOUSE STYLE — LEARN FROM OUR EDITORS\n"
+            . "The communications team refined the AI drafts below into their final versions. "
+            . "Study how they change wording, length, tone, structure and emphasis, and write your "
+            . "summary in the SAME editorial style. These are style references only — do NOT reuse "
+            . "their facts, names or subject matter.\n\n";
+
+        foreach ($examples as $i => $ex) {
+            $n = $i + 1;
+            $original = $this->truncateContent($ex['original'], 700);
+            $edited   = $this->truncateContent($ex['edited'], 700);
+            $block .= "STYLE EXAMPLE {$n}\n"
+                . "- AI draft: {$original}\n"
+                . "- Editor's final: {$edited}\n\n";
+        }
+
+        $block .= "---\nNow write the summary for the article below, applying that editorial style.\n\n";
+        return $block;
     }
 
     /**

@@ -62,6 +62,12 @@ $jsState = [
     <!-- Step 1: Add article -->
     <section class="editor__section" x-show="status === 'draft'">
         <h2 class="heading-section">Add an article</h2>
+        <?php $learnCount = \BWFC\DailyBrief\BriefRepository::editExampleCount(); ?>
+        <?php if ($learnCount > 0 && (env('SUMMARY_LEARN_FROM_EDITS', true) === true)): ?>
+            <p class="learn-note" title="New summaries use your recent edits as style examples.">
+                &#9998; AI style-learning is on &mdash; drawing on your last edits so summaries match your house style. The more you edit, the closer it gets.
+            </p>
+        <?php endif; ?>
 
         <div class="url-row">
             <input type="url" class="input input--url"
