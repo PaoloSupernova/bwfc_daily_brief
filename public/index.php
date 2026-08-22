@@ -52,6 +52,10 @@ if ($admin !== null) {
             $view = VIEWS_PATH . '/admin/squad.php';
             $pageTitle = 'Admin - Squad & People';
             break;
+        case 'knowledge':
+            $view = VIEWS_PATH . '/admin/knowledge.php';
+            $pageTitle = 'Admin - Knowledge Base';
+            break;
         case 'export':
             $view = VIEWS_PATH . '/admin/export.php';
             $pageTitle = 'Admin - Export Data';

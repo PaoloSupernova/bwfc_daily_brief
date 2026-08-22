@@ -91,9 +91,11 @@ PROMPT;
             'content' => $this->truncateContent($content, 6000),
         ]);
 
-        // Prepend recent editor edits as few-shot style guidance so summaries
-        // steadily match the team's house style ("learn from my edits").
-        return $this->claude->complete($this->editStyleExamplesBlock() . $prompt);
+        // Prepend the knowledge base (facts/terminology/style) for grounding,
+        // then recent editor edits as few-shot style guidance, then the task.
+        return $this->claude->complete(
+            KnowledgeBase::promptBlock() . $this->editStyleExamplesBlock() . $prompt
+        );
     }
 
     /**
@@ -242,7 +244,7 @@ PROMPT;
         $template = $this->getPromptTemplate('executive_summary');
         $prompt = $this->hydrate($template, ['articles' => $formatted]);
 
-        return $this->claude->complete($prompt);
+        return $this->claude->complete(KnowledgeBase::promptBlock() . $prompt);
     }
 
     private function getPromptTemplate(string $key): string

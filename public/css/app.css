@@ -920,6 +920,18 @@ code {
     margin: 0 0 14px;
 }
 
+.suggested-rules { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.suggested-rule {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #F5F6F8;
+    border: 1px solid #ECEEF1;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+.suggested-rule__text { flex: 1; font-size: 14px; color: var(--ink); }
+
 /* Article image fields (editor + review) */
 .img-field { display: flex; flex-direction: column; gap: 8px; }
 .img-field__preview img {

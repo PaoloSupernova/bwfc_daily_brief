@@ -152,6 +152,21 @@ CREATE TABLE IF NOT EXISTS article_people (
 ) ENGINE=InnoDB;
 
 -- -----------------------------------------------------
+-- Table: knowledge_entries  (facts / terminology / style injected into prompts)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS knowledge_entries (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    category ENUM('fact','terminology','context','style','avoid','general') NOT NULL DEFAULT 'general',
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    display_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_active (is_active, display_order)
+) ENGINE=InnoDB;
+
+-- -----------------------------------------------------
 -- Table: outlets
 -- Domain-to-publication-name mapping
 -- -----------------------------------------------------

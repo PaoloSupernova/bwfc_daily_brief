@@ -12,6 +12,8 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             <a href="?admin=sections" class="site-nav__link">Sections</a>
             <a href="?admin=sources" class="site-nav__link site-nav__link--active">Sources</a>
             <a href="?admin=jobs" class="site-nav__link">Jobs</a>
+            <a href="?admin=squad" class="site-nav__link">Squad</a>
+            <a href="?admin=knowledge" class="site-nav__link">Knowledge</a>
         </div>
     </header>
 
