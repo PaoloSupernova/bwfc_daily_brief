@@ -264,6 +264,10 @@ $jsState = [
                         <span x-show="!processing">Regenerate</span>
                         <span x-show="processing">Working...</span>
                     </button>
+                    <label class="relevance-toggle" title="Summarise as general news, without the AI flagging it as unrelated to Bolton Wanderers.">
+                        <input type="checkbox" x-model="pending.ignoreRelevance" @change="regenerateSummary()" :disabled="processing">
+                        Include as general news (ignore BWFC relevance)
+                    </label>
                     <span class="field__word-count"><span x-text="wordCount(pending.summary)"></span> words</span>
                 </div>
             </div>

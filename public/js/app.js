@@ -55,6 +55,7 @@ function emptyPending() {
         suggestedSection: '',
         sentiment: '',
         topic: '',
+        ignoreRelevance: false,
         edited: false,
         was_paywall_fallback: false,
         violations: [],
@@ -228,6 +229,7 @@ function briefEditor(initial) {
                     content: this.pending.content,
                     brief_id: this.briefId,
                     skip_duplicate_check: skipDuplicateCheck || false,
+                    ignore_relevance: this.pending.ignoreRelevance || false,
                 });
 
                 // Duplicate detected — show confirmation card instead of summary
@@ -313,6 +315,7 @@ function briefEditor(initial) {
                     headline: this.pending.headline,
                     outlet: this.pending.outlet,
                     content: this.pending.content,
+                    ignore_relevance: this.pending.ignoreRelevance || false,
                 });
                 this.pending.summary = data.summary;
                 this.pending.violations = (data.style_check && data.style_check.violations) || [];

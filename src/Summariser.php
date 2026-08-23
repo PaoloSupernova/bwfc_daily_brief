@@ -82,7 +82,7 @@ PROMPT;
         return null;
     }
 
-    public function summariseArticle(string $headline, string $outlet, string $content): string
+    public function summariseArticle(string $headline, string $outlet, string $content, bool $ignoreRelevance = false): string
     {
         $template = $this->getPromptTemplate('article_summary');
         $prompt = $this->hydrate($template, [
@@ -91,10 +91,19 @@ PROMPT;
             'content' => $this->truncateContent($content, 6000),
         ]);
 
+        // When the editor chooses to include a story regardless of its direct
+        // BWFC relevance, tell the model to summarise it on its own terms and not
+        // to comment on relevance.
+        $override = $ignoreRelevance
+            ? "\n\nINCLUSION OVERRIDE (highest priority): This article has been deliberately selected for the brief. "
+              . "Summarise it factually as a standalone news item on its own terms. Do NOT state or imply that it "
+              . "lacks relevance to Bolton Wanderers, and do not add any commentary about its relevance to the club."
+            : '';
+
         // Prepend the knowledge base (facts/terminology/style) for grounding,
         // then recent editor edits as few-shot style guidance, then the task.
         return $this->claude->complete(
-            KnowledgeBase::promptBlock() . $this->editStyleExamplesBlock() . $prompt
+            KnowledgeBase::promptBlock() . $this->editStyleExamplesBlock() . $prompt . $override
         );
     }
 

@@ -21,6 +21,7 @@ $outlet = trim((string)($input['outlet'] ?? 'Unknown'));
 $content = trim((string)($input['content'] ?? ''));
 $briefId = (int)($input['brief_id'] ?? 0);
 $skipDuplicateCheck = !empty($input['skip_duplicate_check']);
+$ignoreRelevance = !empty($input['ignore_relevance']);
 
 if ($headline === '' || $content === '') {
     api_error('Headline and content are required');
@@ -49,7 +50,7 @@ if ($briefId > 0 && !$skipDuplicateCheck) {
     }
 }
 
-$summary   = $summariser->summariseArticle($headline, $outlet, $content);
+$summary   = $summariser->summariseArticle($headline, $outlet, $content, $ignoreRelevance);
 $section   = $summariser->suggestSection($headline, $outlet, $content);
 $sentiment = $summariser->classifySentiment($headline, $summary);
 $topic     = $summariser->suggestTopic($headline, $outlet, $content);
