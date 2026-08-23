@@ -217,6 +217,21 @@ function jobsAdmin() {
             }
         },
 
+        async runBackup() {
+            this.running = true;
+            this.runningJob = 'backup';
+            try {
+                const data = await apiPost('backup_run.php', {});
+                await this.loadJobs();
+                alert('Backup complete: ' + (data.message || 'done'));
+            } catch (err) {
+                alert('Backup failed: ' + err.message);
+            } finally {
+                this.running = false;
+                this.runningJob = null;
+            }
+        },
+
         formatDate(s) {
             if (!s) return '';
             const d = new Date(s.replace(' ', 'T'));

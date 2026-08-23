@@ -30,3 +30,6 @@ Thumbs.db
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Database backups (generated at runtime)
+/backups/

@@ -43,6 +43,18 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 <span x-show="runningJob === 'insights'" x-cloak>Generating...</span>
             </button>
         </div>
+        <div class="job-action-card">
+            <h3 class="job-action-card__name">Database backup</h3>
+            <p class="job-action-card__desc">Save a full copy of the database to a dated file. Old backups are pruned automatically. Schedule this daily for safety.</p>
+            <div class="job-action-card__last">
+                <strong>Last run:</strong>
+                <span x-text="lastRunFor('db_backup') || lastRunFor('db_backup_manual') || 'never'"></span>
+            </div>
+            <button type="button" class="btn btn--primary" @click="runBackup()" :disabled="running">
+                <span x-show="runningJob !== 'backup'">Back up now</span>
+                <span x-show="runningJob === 'backup'" x-cloak>Backing up...</span>
+            </button>
+        </div>
     </div>
 
     <!-- Setup instructions -->
@@ -58,6 +70,14 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 <li><strong>Arguments:</strong> <code>C:\xampp_new\htdocs\bwfc-daily-brief\bin\run_jobs.php</code></li>
             </ul>
             <p>The script runs both jobs each time but skips work that's not due. Insights only generate on Mondays unless forced.</p>
+            <p><strong>Daily backup</strong> — add a second Basic Task:</p>
+            <ul>
+                <li><strong>Name:</strong> BWFC Daily Brief Backup</li>
+                <li><strong>Trigger:</strong> Daily at 05:30</li>
+                <li><strong>Program:</strong> <code>C:\xampp_new\php\php.exe</code></li>
+                <li><strong>Arguments:</strong> <code>C:\xampp_new\htdocs\bwfc-daily-brief\bin\backup_db.php</code></li>
+            </ul>
+            <p>Backups are written to the <code>backups</code> folder (or <code>BACKUP_DIR</code> in .env) and the last 14 are kept.</p>
         </div>
     </details>
 
