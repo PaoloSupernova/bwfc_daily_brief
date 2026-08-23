@@ -48,7 +48,13 @@ final class KnowledgeBase
      */
     public static function promptBlock(int $maxChars = 2800): string
     {
-        $rows = self::all(true);
+        // Best-effort: if the knowledge_entries table is missing (migration not
+        // run yet) or unreadable, skip injection rather than break summarising.
+        try {
+            $rows = self::all(true);
+        } catch (\Throwable $e) {
+            return '';
+        }
         if (count($rows) === 0) {
             return '';
         }
