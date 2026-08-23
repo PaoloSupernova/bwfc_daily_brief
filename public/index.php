@@ -32,6 +32,7 @@ $queue = isset($_GET['queue']);
 $insights = isset($_GET['insights']);
 $journalists = isset($_GET['journalists']);
 $people = isset($_GET['people']);
+$stories = isset($_GET['stories']);
 $admin = $_GET['admin'] ?? null;
 
 if ($admin !== null) {
@@ -76,6 +77,9 @@ if ($admin !== null) {
 } elseif ($people) {
     $view = VIEWS_PATH . '/people.php';
     $pageTitle = 'People in the news';
+} elseif ($stories) {
+    $view = VIEWS_PATH . '/stories.php';
+    $pageTitle = 'Story Tracker';
 } elseif ($action === 'new') {
     $today = date('Y-m-d');
     $existing = BriefRepository::findBriefByDate($today);

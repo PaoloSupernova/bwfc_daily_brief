@@ -941,6 +941,36 @@ code {
     cursor: pointer;
 }
 
+/* Story tracker */
+.stories { display: flex; flex-direction: column; gap: 16px; }
+.story-card {
+    background: var(--surface, #fff);
+    border: 1px solid var(--line, #E4E4E7);
+    border-radius: 10px;
+    padding: 18px 20px;
+}
+.story-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.story-card__title { font-family: var(--font-head); font-weight: 700; font-size: 18px; color: var(--bwfc-navy); }
+.story-card__kw { font-size: 12px; color: var(--ink-subtle); margin-top: 2px; }
+.story-card__actions { white-space: nowrap; }
+.story-card__empty, .story-card__empty { color: var(--ink-subtle); font-size: 14px; margin-top: 8px; }
+.story-metrics { display: flex; flex-wrap: wrap; gap: 22px; margin: 14px 0 10px; }
+.story-metric { display: flex; flex-direction: column; }
+.story-metric__v { font-size: 22px; font-weight: 700; color: var(--bwfc-navy); font-variant-numeric: tabular-nums; }
+.story-metric__l { font-size: 12px; color: var(--ink-muted); }
+.story-sentiment { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.story-dates { font-size: 12px; color: var(--ink-subtle); }
+.story-latest { font-size: 14px; margin-bottom: 8px; }
+.story-latest__label { font-weight: 700; color: var(--bwfc-navy); margin-right: 4px; }
+.story-latest a { color: var(--bwfc-blue); }
+.story-latest__meta { color: var(--ink-subtle); font-size: 13px; margin-left: 4px; }
+.story-timeline { margin-top: 10px; border-top: 1px solid var(--line, #EEE); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.story-tl-item { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.story-tl-item__date { color: var(--ink-subtle); width: 56px; flex-shrink: 0; }
+.story-tl-item__dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.story-tl-item__outlet { color: var(--ink-muted); width: 130px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story-tl-item__headline { color: var(--bwfc-blue); text-decoration: none; }
+
 /* Article image fields (editor + review) */
 .img-field { display: flex; flex-direction: column; gap: 8px; }
 .img-field__preview img {
