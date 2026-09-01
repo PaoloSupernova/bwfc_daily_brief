@@ -21,6 +21,7 @@ require_once __DIR__ . '/_bootstrap.php';
 use BWFC\DailyBrief\Database;
 use BWFC\DailyBrief\ArticleFetcher;
 use BWFC\DailyBrief\Summariser;
+use BWFC\DailyBrief\Translator;
 use BWFC\DailyBrief\BriefRepository;
 use BWFC\DailyBrief\JournalistRepository;
 use BWFC\DailyBrief\PeopleRepository;
@@ -88,6 +89,12 @@ if (!empty($fetchResult['success'])) {
     $articleContent = (string)($candidate['description'] ?? '');
     $wasPaywallFallback = true;
 }
+
+// Translate non-English content to English (Sonnet) before summarising, so the
+// analysis is consistent. English passes through untouched (local heuristic).
+$translation = Translator::toEnglish($articleContent, $headline);
+$articleContent = $translation['text'];
+$sourceLanguage = $translation['is_english'] ? null : $translation['language'];
 
 // Decide whether we have enough real article text to safely summarise.
 // Hallucination happens when the model is handed little more than a headline
@@ -172,6 +179,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary_original' => $summary,
     'was_paywall_fallback' => $wasPaywallFallback,
     'topic' => $topic,
+    'source_language' => $sourceLanguage ?? '',
     'image_url' => $ingestImageUrl = (!empty($fetchResult['success']) ? (string)($fetchResult['image_url'] ?? '') : ''),
     'image_cached' => ImageCache::cache($ingestImageUrl) ?? '',
 ]);

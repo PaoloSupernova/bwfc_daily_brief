@@ -55,6 +55,7 @@ function emptyPending() {
         suggestedSection: '',
         sentiment: '',
         topic: '',
+        source_language: '',
         ignoreRelevance: false,
         edited: false,
         was_paywall_fallback: false,
@@ -249,6 +250,7 @@ function briefEditor(initial) {
                 this.pending.section_slug = SECTION_SLUG_MAP[data.suggested_section] || 'bwfc';
                 this.pending.sentiment = data.sentiment || '';
                 this.pending.topic = data.suggested_topic || 'other';
+                this.pending.source_language = data.source_language || '';
                 this.pending.violations = (data.style_check && data.style_check.violations) || [];
                 this.pending.edited = false;
 
@@ -360,6 +362,7 @@ function briefEditor(initial) {
                     summary_original: this.pending.summary,
                     sentiment: this.pending.sentiment,
                     topic: this.pending.topic,
+                    source_language: this.pending.source_language || '',
                     was_edited: this.pending.edited,
                     was_paywall_fallback: this.pending.was_paywall_fallback,
                 });

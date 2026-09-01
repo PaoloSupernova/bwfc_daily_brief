@@ -76,6 +76,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'parent_article_id' => $parentArticleId,
     'sentiment' => $sentiment,
     'topic' => (string)($input['topic'] ?? ''),
+    'source_language' => (string)($input['source_language'] ?? ''),
     'image_url' => (string)($input['image_url'] ?? ''),
     'image_cached' => ImageCache::cache((string)($input['image_url'] ?? '')) ?? '',
 ]);

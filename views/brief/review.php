@@ -25,6 +25,7 @@ $jsState = [
         'people' => (string)($a['people'] ?? ''),
         'topic' => (string)($a['topic'] ?? ''),
         'sentiment' => (string)($a['sentiment'] ?? ''),
+        'source_language' => (string)($a['source_language'] ?? ''),
         'headline' => (string)$a['headline'],
         'summary' => (string)$a['summary'],
         'section_id' => (int)$a['section_id'],
@@ -133,6 +134,9 @@ $jsState = [
                                       x-init="autoResize($el, 80)"
                                       @input="autoResize($event.target, 80)"
                                       @blur="saveArticleField(article)"></textarea>
+                            <div class="translated-note" x-show="article.source_language" x-cloak>
+                                &#127760; Translated from <span x-text="article.source_language"></span>
+                            </div>
 
                             <div class="review-article__controls">
                                 <select class="select select--small" x-model="article.section_id" @change="changeSection(article)">

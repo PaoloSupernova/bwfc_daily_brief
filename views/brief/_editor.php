@@ -183,6 +183,9 @@ $jsState = [
                 </div>
                 <div class="review-panel__headline" x-text="pending.headline"></div>
                 <a class="review-panel__link" x-show="pending.url" :href="pending.url" target="_blank" rel="noopener" x-text="pending.url"></a>
+                <div class="translated-note" x-show="pending.source_language" x-cloak>
+                    &#127760; Translated from <span x-text="pending.source_language"></span> &mdash; this note will appear in the brief.
+                </div>
             </div>
 
             <div class="field">

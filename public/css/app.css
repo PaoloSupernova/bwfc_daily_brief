@@ -941,6 +941,17 @@ code {
     cursor: pointer;
 }
 
+.translated-note {
+    font-size: 12px;
+    color: #7A5C00;
+    background: #FFF7E6;
+    border: 1px solid #F3D28B;
+    border-radius: 5px;
+    padding: 5px 9px;
+    margin-top: 6px;
+    display: inline-block;
+}
+
 /* Story tracker */
 .stories { display: flex; flex-direction: column; gap: 16px; }
 .story-card {

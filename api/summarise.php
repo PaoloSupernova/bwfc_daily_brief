@@ -11,6 +11,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
 
 use BWFC\DailyBrief\Summariser;
+use BWFC\DailyBrief\Translator;
 use BWFC\DailyBrief\StyleGuard;
 use BWFC\DailyBrief\AuditLog;
 use BWFC\DailyBrief\BriefRepository;
@@ -28,6 +29,13 @@ if ($headline === '' || $content === '') {
 }
 
 $summariser = new Summariser();
+
+// Translate non-English content to English (via Sonnet) so the analysis below
+// runs on English and stays consistent. English text is detected locally and
+// passes through untouched.
+$translation = Translator::toEnglish($content, $headline);
+$content = $translation['text'];
+$sourceLanguage = $translation['is_english'] ? null : $translation['language'];
 
 // Duplicate detection: if a brief_id is supplied and we're not forcing a full summary,
 // check whether this article covers a story already in the brief.
@@ -70,5 +78,6 @@ api_success([
     'suggested_section'=> $section,
     'sentiment'        => $sentiment,
     'suggested_topic'  => $topic,
+    'source_language'  => $sourceLanguage,
     'style_check'      => $violations,
 ]);

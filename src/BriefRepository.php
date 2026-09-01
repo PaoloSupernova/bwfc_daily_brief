@@ -123,6 +123,9 @@ final class BriefRepository
         }
 
         $topic = isset($data['topic']) && $data['topic'] !== '' ? Topics::normalise((string)$data['topic']) : null;
+        $sourceLanguage = isset($data['source_language']) && trim((string)$data['source_language']) !== ''
+            ? trim((string)$data['source_language'])
+            : null;
 
         $imageUrl = isset($data['image_url']) && trim((string)$data['image_url']) !== ''
             ? trim((string)$data['image_url'])
@@ -135,11 +138,11 @@ final class BriefRepository
             'INSERT INTO brief_articles
                 (brief_id, section_id, display_order, url, image_url, image_cached, outlet_name, headline,
                  article_content, summary, summary_original, was_paywall_fallback,
-                 parent_article_id, sentiment, topic)
+                 parent_article_id, sentiment, topic, source_language)
              VALUES
                 (:brief_id, :section_id, :display_order, :url, :image_url, :image_cached, :outlet_name, :headline,
                  :article_content, :summary, :summary_original, :was_paywall_fallback,
-                 :parent_article_id, :sentiment, :topic)',
+                 :parent_article_id, :sentiment, :topic, :source_language)',
             [
                 'brief_id' => $briefId,
                 'section_id' => (int)$data['section_id'],
@@ -156,6 +159,7 @@ final class BriefRepository
                 'parent_article_id' => $parentId,
                 'sentiment' => $sentiment,
                 'topic' => $topic,
+                'source_language' => $sourceLanguage,
             ]
         );
     }

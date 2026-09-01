@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS brief_articles (
     was_paywall_fallback TINYINT(1) NOT NULL DEFAULT 0,
     sentiment ENUM('positive', 'neutral', 'negative') NULL,
     topic VARCHAR(40) NULL,
+    source_language VARCHAR(30) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_brief (brief_id, section_id, display_order),

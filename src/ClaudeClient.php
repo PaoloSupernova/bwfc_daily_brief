@@ -34,14 +34,15 @@ final class ClaudeClient
      * Send a prompt to Claude and return the text response.
      *
      * @param string $userMessage The prompt content
-     * @param string|null $systemPrompt Optional system prompt (defaults to BWFC context)
+     * @param string|null $systemPrompt Optional system prompt
+     * @param array<string,mixed> $options Per-call overrides: 'model', 'max_tokens'
      * @return string Claude's response text
      */
-    public function complete(string $userMessage, ?string $systemPrompt = null): string
+    public function complete(string $userMessage, ?string $systemPrompt = null, array $options = []): string
     {
         $payload = [
-            'model' => $this->model,
-            'max_tokens' => $this->maxTokens,
+            'model' => (string)($options['model'] ?? $this->model),
+            'max_tokens' => (int)($options['max_tokens'] ?? $this->maxTokens),
             'messages' => [
                 ['role' => 'user', 'content' => $userMessage],
             ],

@@ -213,6 +213,10 @@ final class BriefRenderer
         $kicker = '<div style="font-family: ' . self::FONT_HEAD . '; font-size: 9.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.2px; color: ' . self::RED . '; margin: 0 0 5px;">' . $outlet . '</div>';
         $headlineHtml = '<a href="' . $url . '" target="_blank" rel="noopener" style="font-family: ' . self::FONT_HEAD . '; font-size: 16pt; font-weight: bold; color: ' . self::NAVY . '; text-decoration: none; line-height: 1.24; display: block; margin: 0 0 14px;">' . $headline . '</a>';
         $summaryHtml = '<div style="font-size: 12pt; color: #2B2B2B; line-height: 1.6;">' . $summary . '</div>';
+        $lang = trim((string)($article['source_language'] ?? ''));
+        if ($lang !== '') {
+            $summaryHtml .= '<div style="font-size: 10.5pt; color: #777777; font-style: italic; margin-top: 5px;">Translated from ' . htmlspecialchars($lang, ENT_QUOTES) . '.</div>';
+        }
 
         $moreHtml = '';
         if (!empty($article['related'])) {
@@ -334,6 +338,10 @@ final class BriefRenderer
             foreach ($items as $article) {
                 $lines[] = trim((string)$article['outlet_name']) . ': ' . trim((string)$article['headline']);
                 $lines[] = trim((string)$article['summary']);
+                $lang = trim((string)($article['source_language'] ?? ''));
+                if ($lang !== '') {
+                    $lines[] = '(Translated from ' . $lang . '.)';
+                }
                 if (!empty($article['related'])) {
                     $more = array_map(fn($r) => trim((string)$r['outlet_name']) . ': ' . trim((string)$r['headline']), $article['related']);
                     $lines[] = 'More: ' . implode(' | ', $more);
@@ -378,6 +386,10 @@ final class BriefRenderer
                 $lines[] = "{$outlet}: {$headline}";
                 if ($url !== '') $lines[] = $url;
                 $lines[] = trim((string)$article['summary']);
+                $lang = trim((string)($article['source_language'] ?? ''));
+                if ($lang !== '') {
+                    $lines[] = '(Translated from ' . $lang . '.)';
+                }
                 if (!empty($article['related'])) {
                     $more = array_map(function ($r) {
                         $part = trim((string)$r['outlet_name']) . ': ' . trim((string)$r['headline']);
@@ -527,6 +539,10 @@ final class BriefRenderer
                 // <a> as display:block, which caused the image to split it).
                 $headlineTag = '<div class="article-headline"><a href="' . $url . '" style="color: ' . self::NAVY . '; text-decoration: none;">' . $headline . '</a></div>';
                 $summaryTag = '<div class="article-summary">' . $summary . '</div>';
+                $lang = trim((string)($article['source_language'] ?? ''));
+                if ($lang !== '') {
+                    $summaryTag .= '<div style="font-size: 9pt; color: #777777; font-style: italic; margin-top: 4pt;">Translated from ' . htmlspecialchars($lang, ENT_QUOTES) . '.</div>';
+                }
 
                 // <a name> is the in-document jump target for the contents list.
                 $cardHtml = '<div class="article-card" id="' . $anchor . '"><a name="' . $anchor . '"></a>';
