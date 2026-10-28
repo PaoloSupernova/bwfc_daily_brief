@@ -85,10 +85,14 @@ final class ArticleFetcher
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 5,
-            CURLOPT_TIMEOUT => (int)env('FETCH_TIMEOUT', 10),
-            CURLOPT_USERAGENT => (string)env('FETCH_USER_AGENT', 'Mozilla/5.0 (compatible; BWFC-DailyBrief/1.0)'),
+            // Separate connect vs. total timeout: a dead host fails fast, while a
+            // slow-but-responsive site gets the full window to finish downloading.
+            CURLOPT_CONNECTTIMEOUT => (int)env('FETCH_CONNECT_TIMEOUT', 10),
+            CURLOPT_TIMEOUT => (int)env('FETCH_TIMEOUT', 25),
+            CURLOPT_ENCODING => '', // accept gzip/deflate so big pages transfer faster
+            CURLOPT_USERAGENT => (string)env('FETCH_USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'),
             CURLOPT_HTTPHEADER => [
-                'Accept: text/html,application/xhtml+xml',
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language: en-GB,en;q=0.9',
             ],
             CURLOPT_SSL_VERIFYPEER => false, // XAMPP often lacks CA bundle
