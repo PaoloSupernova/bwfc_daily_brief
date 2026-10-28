@@ -80,6 +80,18 @@ final class ArticleFetcher
             throw new RuntimeException('Invalid URL');
         }
 
+        // Resolve a real browser User-Agent. If the .env still holds the old
+        // bot UA (which some sites block), use the browser default instead so
+        // the fix applies without needing a .env edit.
+        $browserUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+        $ua = (string)env('FETCH_USER_AGENT', '');
+        if ($ua === '' || stripos($ua, 'BWFCDailyBrief') !== false || stripos($ua, 'BWFC-DailyBrief') !== false) {
+            $ua = $browserUa;
+        }
+        // Enforce a sensible minimum total timeout so slow sites get a fair window
+        // even if .env still has a short value.
+        $timeout = max(20, (int)env('FETCH_TIMEOUT', 25));
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -88,9 +100,9 @@ final class ArticleFetcher
             // Separate connect vs. total timeout: a dead host fails fast, while a
             // slow-but-responsive site gets the full window to finish downloading.
             CURLOPT_CONNECTTIMEOUT => (int)env('FETCH_CONNECT_TIMEOUT', 10),
-            CURLOPT_TIMEOUT => (int)env('FETCH_TIMEOUT', 25),
+            CURLOPT_TIMEOUT => $timeout,
             CURLOPT_ENCODING => '', // accept gzip/deflate so big pages transfer faster
-            CURLOPT_USERAGENT => (string)env('FETCH_USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'),
+            CURLOPT_USERAGENT => $ua,
             CURLOPT_HTTPHEADER => [
                 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language: en-GB,en;q=0.9',
