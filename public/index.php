@@ -33,6 +33,7 @@ $insights = isset($_GET['insights']);
 $journalists = isset($_GET['journalists']);
 $people = isset($_GET['people']);
 $stories = isset($_GET['stories']);
+$ask = isset($_GET['ask']);
 $admin = $_GET['admin'] ?? null;
 
 if ($admin !== null) {
@@ -80,6 +81,9 @@ if ($admin !== null) {
 } elseif ($stories) {
     $view = VIEWS_PATH . '/stories.php';
     $pageTitle = 'Story Tracker';
+} elseif ($ask) {
+    $view = VIEWS_PATH . '/ask.php';
+    $pageTitle = 'Ask the Archive';
 } elseif ($action === 'new') {
     $today = date('Y-m-d');
     $existing = BriefRepository::findBriefByDate($today);

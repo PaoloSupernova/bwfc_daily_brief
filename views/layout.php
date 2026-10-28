@@ -60,6 +60,7 @@ $asset = function (string $relativePath) use ($basePath): string {
                 <a href="<?= $basePath ?>/?journalists=1" class="site-nav__link <?= ($journalists ?? false) ? 'is-active' : '' ?>">Journalists</a>
                 <a href="<?= $basePath ?>/?people=1" class="site-nav__link <?= ($people ?? false) ? 'is-active' : '' ?>">People</a>
                 <a href="<?= $basePath ?>/?stories=1" class="site-nav__link <?= ($stories ?? false) ? 'is-active' : '' ?>">Stories</a>
+                <a href="<?= $basePath ?>/?ask=1" class="site-nav__link <?= ($ask ?? false) ? 'is-active' : '' ?>">Ask</a>
                 <a href="<?= $basePath ?>/?admin=sections" class="site-nav__link <?= (($admin ?? '') !== '') ? 'is-active' : '' ?>">Admin</a>
                 <?php if ($user !== null): ?>
                     <span class="site-nav__user"><?= htmlspecialchars($user['name'], ENT_QUOTES) ?></span>

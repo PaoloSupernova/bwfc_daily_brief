@@ -161,6 +161,31 @@ final class ClaudeClient
         return $decoded;
     }
 
+    /**
+     * Multi-turn conversation: send a full messages array (each
+     * ['role'=>'user'|'assistant','content'=>string]) and return the reply text.
+     *
+     * @param array<int,array{role:string,content:string}> $messages
+     * @param array<string,mixed> $options Per-call overrides: 'model', 'max_tokens'
+     */
+    public function completeMessages(array $messages, ?string $systemPrompt = null, array $options = []): string
+    {
+        $payload = [
+            'model' => (string)($options['model'] ?? $this->model),
+            'max_tokens' => (int)($options['max_tokens'] ?? $this->maxTokens),
+            'messages' => array_values($messages),
+        ];
+        if ($systemPrompt !== null) {
+            $payload['system'] = $systemPrompt;
+        }
+
+        $response = $this->requestWithRetry($payload);
+        if (!isset($response['content'][0]['text'])) {
+            throw new RuntimeException('Claude response malformed: no text block returned');
+        }
+        return trim($response['content'][0]['text']);
+    }
+
     public function getModel(): string
     {
         return $this->model;
