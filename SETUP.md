@@ -138,10 +138,11 @@ Still in phpMyAdmin, select the `bwfc_daily_brief` database, click the **Import*
 | 12 | `database/migration_011_knowledge.sql` | Knowledge base (facts/terminology/style injected into prompts) |
 | 13 | `database/migration_012_stories.sql` | Story tracker (tracked_stories table) |
 | 14 | `database/migration_013_source_language.sql` | Translation source language (source_language column) |
+| 15 | `database/migration_014_queue_triage.sql` | Queue auto-triage (priority/section/cluster columns) |
 
 To import each file: **Import tab → Choose File → select the file → Go**.
 
-> **Skip steps 5–14 if you are restoring from a database export** — see Part 2 (Data Transfer) instead.
+> **Skip steps 5–15 if you are restoring from a database export** — see Part 2 (Data Transfer) instead.
 
 > **Note:** the web server must be able to write to `public/img/cache/` (cached
 > article images are stored there). On XAMPP this works out of the box; on a

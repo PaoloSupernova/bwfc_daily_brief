@@ -11,6 +11,7 @@ function queueScreen() {
 
         groups: [],
         statusCounts: { new: 0, ingested: 0, rejected: 0, duplicate: 0 },
+        triaging: false,
 
         // Side panel state
         panelOpen: false,
@@ -43,6 +44,41 @@ function queueScreen() {
             if (this.hours === h) return;
             this.hours = h;
             this.loadQueue();
+        },
+
+        // Auto-triage: rank, suggest a section, and cluster duplicate coverage.
+        async triage() {
+            this.triaging = true;
+            this.flash('Triaging the queue...');
+            try {
+                const data = await apiPost('queue_triage.php', { hours: this.hours });
+                await this.loadQueue();
+                this.flash('Triaged ' + data.triaged + ' candidates into ' + data.clusters + ' story groups.');
+            } catch (err) {
+                this.flash('Triage failed: ' + err.message);
+            } finally {
+                this.triaging = false;
+            }
+        },
+
+        // Items sorted by priority (high first), then grouped by story cluster,
+        // with cluster sizes so duplicates can be flagged.
+        sortedItems(group) {
+            const rank = { high: 0, medium: 1, low: 2 };
+            const sizes = {};
+            group.items.forEach(c => { if (c.triage_cluster != null) sizes[c.triage_cluster] = (sizes[c.triage_cluster] || 0) + 1; });
+            const items = group.items.slice().sort((a, b) => {
+                const ra = a.triage_priority != null ? rank[a.triage_priority] : 3;
+                const rb = b.triage_priority != null ? rank[b.triage_priority] : 3;
+                if (ra !== rb) return ra - rb;
+                return (a.triage_cluster || 999) - (b.triage_cluster || 999);
+            });
+            items.forEach(c => { c._clusterSize = c.triage_cluster != null ? (sizes[c.triage_cluster] || 1) : 1; });
+            return items;
+        },
+
+        priorityLabel(p) {
+            return { high: 'High', medium: 'Medium', low: 'Low' }[p] || '';
         },
 
         setStatus(s) {

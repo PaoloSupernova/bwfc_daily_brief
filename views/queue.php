@@ -11,6 +11,11 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             <p class="lede">Articles pulled from your feeds in the last <span x-text="hours"></span> hours. Click one to add it to today's brief.</p>
         </div>
         <div class="queue__header-action">
+            <button type="button" class="btn btn--primary" @click="triage()" :disabled="triaging || refreshing"
+                    title="Let AI rank the queue, suggest sections, and group duplicate stories.">
+                <span x-show="!triaging">&#9889; Auto-triage</span>
+                <span x-show="triaging" x-cloak>Triaging...</span>
+            </button>
             <button type="button" class="btn btn--secondary" @click="refreshFeeds()" :disabled="refreshing">
                 <span x-show="!refreshing">Refresh feeds</span>
                 <span x-show="refreshing" x-cloak>Refreshing...</span>
@@ -67,17 +72,24 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                         </span>
                     </header>
                     <div class="queue-group__items">
-                        <template x-for="cand in group.items" :key="cand.id">
+                        <template x-for="cand in sortedItems(group)" :key="cand.id">
                             <article class="candidate"
                                      :class="{
                                          'is-ingested': cand.status === 'ingested',
                                          'is-rejected': cand.status === 'rejected',
                                          'is-duplicate': cand.status === 'duplicate',
                                          'is-active': activeCandidateId === cand.id,
+                                         'candidate--high': cand.triage_priority === 'high',
                                      }">
                                 <div class="candidate__head">
+                                    <span class="candidate__priority" x-show="cand.triage_priority" x-cloak
+                                          :class="'candidate__priority--' + cand.triage_priority"
+                                          x-text="priorityLabel(cand.triage_priority)"></span>
                                     <span class="candidate__outlet" x-text="cand.outlet_name || cand.source_name"></span>
                                     <span class="candidate__local" x-show="cand.source_is_local" x-cloak>LOCAL</span>
+                                    <span class="candidate__cluster" x-show="cand._clusterSize > 1" x-cloak
+                                          :title="'Part of a group of ' + cand._clusterSize + ' articles on the same story'"
+                                          x-text="'Same story ×' + cand._clusterSize"></span>
                                     <span class="candidate__time" x-text="relativeTime(cand.discovered_at)"></span>
                                     <template x-if="cand.status === 'ingested'">
                                         <span class="status-pill status-pill--sent">Added</span>
@@ -93,6 +105,8 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                                     <a :href="cand.url" target="_blank" rel="noopener" x-text="cand.headline"></a>
                                 </h3>
                                 <p class="candidate__description" x-show="cand.description" x-text="cand.description"></p>
+                                <p class="candidate__suggested" x-show="cand.triage_section" x-cloak
+                                   x-text="'Suggested section: ' + cand.triage_section"></p>
                                 <div class="candidate__actions">
                                     <template x-if="cand.status === 'new'">
                                         <button type="button" class="btn btn--primary btn--small"

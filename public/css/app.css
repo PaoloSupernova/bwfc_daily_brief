@@ -980,6 +980,31 @@ code {
 .ask-form { display: flex; gap: 10px; align-items: center; }
 .ask-form .input { flex: 1; }
 
+/* Queue auto-triage badges */
+.candidate--high { border-left: 3px solid #C0392B; }
+.candidate__priority {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-right: 6px;
+}
+.candidate__priority--high { background: #FDECEA; color: #C0392B; }
+.candidate__priority--medium { background: #EAF2FB; color: #003976; }
+.candidate__priority--low { background: #EEE; color: #777; }
+.candidate__cluster {
+    font-size: 11px;
+    color: #7A5C00;
+    background: #FFF7E6;
+    border: 1px solid #F3D28B;
+    border-radius: 10px;
+    padding: 1px 7px;
+    margin-left: 6px;
+}
+.candidate__suggested { font-size: 12px; color: var(--ink-subtle); margin: 4px 0 0; }
+
 /* Story tracker */
 .stories { display: flex; flex-direction: column; gap: 16px; }
 .story-card {
