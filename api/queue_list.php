@@ -32,6 +32,18 @@ if (in_array($statusFilter, ['new', 'ingested', 'rejected', 'duplicate'], true))
 
 $whereSql = implode(' AND ', $where);
 
+// Triage columns are added by migration_014. Degrade gracefully if that
+// migration hasn't been run yet, so the core queue never breaks.
+$hasTriage = false;
+try {
+    $hasTriage = Database::selectOne("SHOW COLUMNS FROM discovery_candidates LIKE 'triage_priority'") !== null;
+} catch (\Throwable $e) {
+    $hasTriage = false;
+}
+$triageSelect = $hasTriage
+    ? 'c.triage_priority, c.triage_section, c.triage_cluster,'
+    : 'NULL AS triage_priority, NULL AS triage_section, NULL AS triage_cluster,';
+
 $rows = Database::select(
     "SELECT
         c.id,
@@ -44,9 +56,7 @@ $rows = Database::select(
         c.status,
         c.ingested_article_id,
         c.rejected_reason,
-        c.triage_priority,
-        c.triage_section,
-        c.triage_cluster,
+        {$triageSelect}
         s.id AS source_id,
         s.name AS source_name,
         s.is_local AS source_is_local
