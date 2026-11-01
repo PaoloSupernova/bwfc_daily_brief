@@ -110,6 +110,15 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 
         <div class="dash__charts">
 
+            <div class="dash__panel">
+                <h2 class="heading-section">Coverage over time</h2>
+                <p class="dash__panel-hint" x-show="coverageTimelineEmpty()" x-cloak>
+                    No articles in this window yet. The trend builds up as briefs go out.
+                </p>
+                <canvas id="chart-coverage-timeline" x-show="!coverageTimelineEmpty()"></canvas>
+                <p class="dash__caption" x-show="!coverageTimelineEmpty()" x-cloak x-text="timelineCaption()"></p>
+            </div>
+
             <div class="dash__row">
                 <div class="dash__panel dash__panel--half">
                     <h2 class="heading-section">Section share</h2>

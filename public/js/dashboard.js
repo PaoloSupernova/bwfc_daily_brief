@@ -15,6 +15,8 @@ function dashboardScreen() {
         sentimentData: { positive: 0, neutral: 0, negative: 0 },
         wordCloud: [],
         topicBreakdown: [],
+        coverageTimeline: [],
+        timelineGranularity: 'day',
         recentBriefs: [],
 
         // Reputation alerts
@@ -45,6 +47,8 @@ function dashboardScreen() {
                 this.sentimentData = data.sentiment || { positive: 0, neutral: 0, negative: 0 };
                 this.wordCloud = data.word_cloud || [];
                 this.topicBreakdown = data.topic_breakdown || [];
+                this.coverageTimeline = data.coverage_timeline || [];
+                this.timelineGranularity = data.timeline_granularity || 'day';
                 this.recentBriefs = data.recent_briefs || [];
 
                 // Render after DOM updates so canvases exist
@@ -121,9 +125,101 @@ function dashboardScreen() {
                 return;
             }
 
+            this.renderCoverageTimeline();
             this.renderSectionShare();
             this.renderTopOutlets();
             this.renderLocalVsNational();
+        },
+
+        coverageTimelineEmpty() {
+            return this.coverageTimeline.length === 0 ||
+                   this.coverageTimeline.every(d => d.total === 0);
+        },
+
+        timelineCaption() {
+            const unit = this.timelineGranularity === 'week' ? 'Weekly' : 'Daily';
+            return `${unit} article volume, coloured by sentiment. Bar height is how much was published; the colours are how it read.`;
+        },
+
+        // Stacked bars: height = volume that day/week, segments = sentiment mix.
+        renderCoverageTimeline() {
+            const ctx = document.getElementById('chart-coverage-timeline');
+            if (!ctx) return;
+            if (this._charts.coverageTimeline) this._charts.coverageTimeline.destroy();
+            if (this.coverageTimelineEmpty()) return;
+
+            const t = this.coverageTimeline;
+            const mk = (key, color, label) => ({
+                label,
+                data: t.map(d => d[key]),
+                backgroundColor: color,
+                stack: 'coverage',
+                borderWidth: 0,
+                maxBarThickness: 48,
+            });
+
+            this._charts.coverageTimeline = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: t.map(d => d.label),
+                    datasets: [
+                        mk('positive', '#2E8B57', 'Positive'),
+                        mk('neutral',  '#999999', 'Neutral'),
+                        mk('negative', '#C0392B', 'Negative'),
+                        mk('untagged', '#D8D8D8', 'Untagged'),
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: { family: "'Satoshi', 'Inter', sans-serif", size: 12 },
+                                color: '#1D1D1B',
+                                boxWidth: 12,
+                                padding: 12,
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => items[0]?.label ?? '',
+                                label: (c) => c.parsed.y > 0 ? `${c.dataset.label}: ${c.parsed.y}` : null,
+                                footer: (items) => {
+                                    const total = items.reduce((a, b) => a + (b.parsed.y || 0), 0);
+                                    return `Total: ${total} article${total === 1 ? '' : 's'}`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                font: { family: "'Satoshi', sans-serif", size: 10 },
+                                color: '#6A6A6A',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 12,
+                            },
+                            grid: { display: false },
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0,
+                                font: { family: "'Satoshi', sans-serif", size: 11 },
+                                color: '#6A6A6A',
+                            },
+                            grid: { color: '#EDEEF2' },
+                        },
+                    },
+                },
+            });
         },
 
         // BWFC palette + tonal variations for chart fills

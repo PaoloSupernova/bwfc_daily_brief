@@ -258,6 +258,70 @@ $topicBreakdown = array_map(fn($r) => [
 ], $topicRows);
 
 // ============================================================
+// COVERAGE TIMELINE — volume + sentiment shape over the window
+// Bar height = how much was published that day/week; the stacked
+// colours show how it read (positive / neutral / negative).
+// ============================================================
+
+$timelineRows = Database::select(
+    "SELECT b.brief_date AS d, a.sentiment AS sentiment, COUNT(*) AS n
+     FROM brief_articles a
+     JOIN briefs b ON b.id = a.brief_id
+     WHERE b.deleted_at IS NULL AND b.brief_date >= :start
+       AND a.parent_article_id IS NULL
+     GROUP BY b.brief_date, a.sentiment",
+    ['start' => $rangeStart]
+);
+
+// Day-level buckets read well up to 30 days; beyond that, group by week
+// so 90 bars don't turn into noise.
+$granularity = $window <= 30 ? 'day' : 'week';
+
+$weekStart = function (int $ts): int {
+    $midnight = strtotime(date('Y-m-d', $ts));
+    $dow = (int)date('N', $midnight); // 1 (Mon) .. 7 (Sun)
+    return strtotime('-' . ($dow - 1) . ' days', $midnight);
+};
+
+$keyFor = function (string $date) use ($granularity, $weekStart): string {
+    $ts = strtotime($date);
+    return date('Y-m-d', $granularity === 'week' ? $weekStart($ts) : strtotime(date('Y-m-d', $ts)));
+};
+
+// Seed a gap-free set of buckets across the whole window so the shape is
+// continuous even on days with no coverage.
+$buckets = [];
+$cursor = $granularity === 'week' ? $weekStart(strtotime($rangeStart)) : strtotime($rangeStart);
+$endTs = strtotime($now);
+while ($cursor <= $endTs) {
+    $buckets[date('Y-m-d', $cursor)] = ['positive' => 0, 'neutral' => 0, 'negative' => 0, 'untagged' => 0];
+    $cursor = strtotime('+1 ' . ($granularity === 'week' ? 'week' : 'day'), $cursor);
+}
+
+foreach ($timelineRows as $row) {
+    $key = $keyFor((string)$row['d']);
+    if (!isset($buckets[$key])) continue; // safety against edge timestamps
+    $band = in_array($row['sentiment'], ['positive', 'neutral', 'negative'], true)
+        ? (string)$row['sentiment']
+        : 'untagged';
+    $buckets[$key][$band] += (int)$row['n'];
+}
+
+$coverageTimeline = [];
+foreach ($buckets as $date => $bands) {
+    $ts = strtotime($date);
+    $coverageTimeline[] = [
+        'date'      => $date,
+        'label'     => $granularity === 'week' ? 'w/c ' . date('j M', $ts) : date('j M', $ts),
+        'positive'  => $bands['positive'],
+        'neutral'   => $bands['neutral'],
+        'negative'  => $bands['negative'],
+        'untagged'  => $bands['untagged'],
+        'total'     => $bands['positive'] + $bands['neutral'] + $bands['negative'] + $bands['untagged'],
+    ];
+}
+
+// ============================================================
 // RECENT BRIEFS (sidebar)
 // ============================================================
 
@@ -288,6 +352,8 @@ api_success([
     'recent_briefs' => $recent,
     'sentiment' => $sentimentCounts,
     'topic_breakdown' => $topicBreakdown,
+    'coverage_timeline' => $coverageTimeline,
+    'timeline_granularity' => $granularity,
 ]);
 
 // ============================================================
