@@ -1176,6 +1176,42 @@ code {
     .squad-form { grid-template-columns: 1fr; }
 }
 
+/* ---------- Merge duplicates panel ---------- */
+.merge-panel {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 10px);
+    padding: 18px 20px;
+    margin: 12px 0 20px;
+    max-width: 680px;
+}
+.merge-panel .field { margin-bottom: 14px; }
+
+.merge-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 8px);
+    background: var(--surface);
+    padding: 6px;
+}
+.merge-source {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.merge-source:hover { background: var(--surface-alt); }
+.merge-source input { margin: 0; flex: 0 0 auto; align-self: center; }
+.merge-source__name { font-weight: 600; color: var(--ink, #1D1D1B); }
+.merge-source__meta { font-size: 12px; color: var(--ink-subtle); margin-left: auto; white-space: nowrap; }
+
 /* ---------- Prior-coverage warning (amber) ---------- */
 .prior-coverage-panel {
     background: #FFF7E6;

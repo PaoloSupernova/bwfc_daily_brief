@@ -9,6 +9,8 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
         <div>
             <h1 class="heading-display">Journalists</h1>
             <p class="lede">Who's writing about the club, and how they're covering it. Counts articles in the flagged sections below.</p>
+            <button type="button" class="btn btn--link btn--small" @click="mergeOpen ? closeMerge() : openMerge()"
+                    x-text="mergeOpen ? 'Close merge' : 'Merge duplicates'"></button>
         </div>
         <div class="dash__window-buttons">
             <button type="button" class="chip" :class="{ 'is-active': days === 30 }" @click="setDays(30)">30 days</button>
@@ -34,6 +36,44 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
             </div>
         </div>
     </details>
+
+    <!-- Merge duplicates -->
+    <div class="merge-panel" x-show="mergeOpen" x-cloak>
+        <p class="field__hint">
+            Bylines are captured automatically, so the same writer can end up as two records (e.g. "Mike Smith" and "Michael Smith").
+            Pick the one to <strong>keep</strong>, tick the duplicate(s), and all their articles move across. This can't be undone.
+        </p>
+        <div class="field">
+            <label class="field__label">Keep this record</label>
+            <select class="select" x-model.number="mergeTarget"
+                    @change="mergeSources = mergeSources.filter(id => id !== Number(mergeTarget))">
+                <option value="0">&mdash; choose &mdash;</option>
+                <template x-for="j in allJournalists" :key="j.id">
+                    <option :value="j.id" x-text="j.name + (j.last_outlet ? ' · ' + j.last_outlet : '') + ' (' + (j.article_count || 0) + ')'"></option>
+                </template>
+            </select>
+        </div>
+        <div class="field" x-show="Number(mergeTarget) > 0" x-cloak>
+            <label class="field__label">Merge these duplicates into it</label>
+            <div class="merge-sources">
+                <template x-for="j in mergeCandidates()" :key="j.id">
+                    <label class="merge-source">
+                        <input type="checkbox" :checked="mergeSources.includes(Number(j.id))" @change="toggleMergeSource(j.id)">
+                        <span class="merge-source__name" x-text="j.name"></span>
+                        <span class="merge-source__meta"
+                              x-text="(j.last_outlet ? j.last_outlet + ' · ' : '') + (j.article_count || 0) + ' article' + ((j.article_count || 0) === 1 ? '' : 's')"></span>
+                    </label>
+                </template>
+            </div>
+        </div>
+        <div class="squad-form__actions" x-show="Number(mergeTarget) > 0" x-cloak>
+            <button type="button" class="btn btn--primary" @click="doMerge()" :disabled="merging || mergeSources.length === 0">
+                <span x-show="!merging">Merge <span x-text="mergeSources.length"></span> into kept record</span>
+                <span x-show="merging" x-cloak>Merging&hellip;</span>
+            </button>
+        </div>
+        <div class="notice" :class="mergeOk ? 'notice--success' : 'notice--error'" x-show="mergeMsg" x-cloak x-text="mergeMsg"></div>
+    </div>
 
     <div class="queue__loading" x-show="loading" x-cloak>Loading&hellip;</div>
     <div class="notice notice--error" x-show="error" x-cloak x-text="error"></div>
@@ -113,6 +153,17 @@ function journalistsScreen() {
         unassigned: { article_count: 0, positive: 0, neutral: 0, negative: 0 },
         sections: [],
 
+        // Merge duplicates
+        mergeOpen: false,
+        mergeTarget: 0,
+        mergeSources: [],
+        merging: false,
+        mergeMsg: '',
+        mergeOk: false,
+        allJournalists: [],
+
+        root() { return (window.BWFC_BASE || '').replace(/\/public\/?$/, ''); },
+
         async load() {
             this.loading = true;
             this.error = '';
@@ -163,6 +214,76 @@ function journalistsScreen() {
             if (tagged === 0) return 'width:0%';
             const pct = Math.round((j[kind] / tagged) * 100);
             return 'width:' + pct + '%';
+        },
+
+        // ---- Merge duplicates ----
+        async openMerge() {
+            this.mergeOpen = true;
+            this.mergeTarget = 0;
+            this.mergeSources = [];
+            this.mergeMsg = '';
+            this.mergeOk = false;
+            await this.loadAll();
+        },
+        closeMerge() { this.mergeOpen = false; },
+
+        async loadAll() {
+            try {
+                const res = await fetch(this.root() + '/api/journalists_all.php');
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'Failed to load');
+                this.allJournalists = data.journalists || [];
+            } catch (e) {
+                this.mergeOk = false;
+                this.mergeMsg = 'Could not load journalists: ' + e.message;
+            }
+        },
+
+        mergeCandidates() {
+            return this.allJournalists.filter(j => Number(j.id) !== Number(this.mergeTarget));
+        },
+
+        toggleMergeSource(id) {
+            id = Number(id);
+            const i = this.mergeSources.indexOf(id);
+            if (i >= 0) this.mergeSources.splice(i, 1);
+            else this.mergeSources.push(id);
+        },
+
+        async doMerge() {
+            const target = Number(this.mergeTarget);
+            const sources = this.mergeSources.filter(id => Number(id) !== target);
+            if (!target || sources.length === 0) return;
+
+            const keep = this.allJournalists.find(j => Number(j.id) === target);
+            const keepName = keep ? keep.name : 'the kept record';
+            if (!confirm('Merge ' + sources.length + ' record(s) into "' + keepName +
+                         '"? Their articles move across and the duplicate records are deleted. This cannot be undone.')) return;
+
+            this.merging = true;
+            this.mergeMsg = '';
+            try {
+                const res = await fetch(this.root() + '/api/merge_records.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'journalist', target_id: target, source_ids: sources }),
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'Merge failed');
+                const r = data.result || {};
+                this.mergeOk = true;
+                this.mergeMsg = 'Merged ' + (r.merged || 0) + ' record(s) into ' + (r.target_name || keepName) +
+                                ' — ' + (r.links_moved || 0) + ' article link(s) moved.';
+                this.mergeSources = [];
+                this.mergeTarget = 0;
+                await this.loadAll();
+                await this.load();
+            } catch (e) {
+                this.mergeOk = false;
+                this.mergeMsg = 'Error: ' + e.message;
+            } finally {
+                this.merging = false;
+            }
         },
     };
 }

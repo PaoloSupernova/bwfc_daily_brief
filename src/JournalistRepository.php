@@ -315,4 +315,92 @@ final class JournalistRepository
             ['c' => $counts ? 1 : 0, 'id' => $sectionId]
         );
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Admin: full roster + merge
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Every journalist with their all-time article count, for the merge picker.
+     * (Unlike leaderboard(), this ignores the counts_for_journalists flag and
+     * date range, so genuine duplicates are always visible.)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function allWithCounts(): array
+    {
+        return Database::select(
+            "SELECT j.id, j.name, j.last_outlet,
+                    COUNT(aj.article_id) AS article_count
+             FROM journalists j
+             LEFT JOIN article_journalists aj ON aj.journalist_id = j.id
+             GROUP BY j.id, j.name, j.last_outlet
+             ORDER BY article_count DESC, j.name ASC"
+        );
+    }
+
+    /**
+     * Merge one or more duplicate journalist records into a target record.
+     * All article links move to the target (duplicates are collapsed), then the
+     * source records are deleted. Idempotent and transactional.
+     *
+     * @param array<int, int> $sourceIds
+     * @return array{target_id:int, target_name:string, merged:int, links_moved:int}
+     */
+    public static function merge(int $targetId, array $sourceIds): array
+    {
+        $sourceIds = array_values(array_unique(array_filter(
+            array_map('intval', $sourceIds),
+            static fn($id) => $id > 0 && $id !== $targetId
+        )));
+
+        $target = Database::selectOne('SELECT id, name FROM journalists WHERE id = :id', ['id' => $targetId]);
+        if ($target === null) {
+            throw new \RuntimeException('Target journalist not found.');
+        }
+        if ($sourceIds === []) {
+            return ['target_id' => $targetId, 'target_name' => (string)$target['name'], 'merged' => 0, 'links_moved' => 0];
+        }
+
+        $inIds = implode(',', $sourceIds); // ints only, safe to inline
+
+        Database::beginTransaction();
+        try {
+            // Move links that the target doesn't already have; PK collisions are
+            // skipped by IGNORE and cleaned up by the DELETE that follows.
+            $moved = Database::execute(
+                "UPDATE IGNORE article_journalists SET journalist_id = :t WHERE journalist_id IN ($inIds)",
+                ['t' => $targetId]
+            );
+            Database::execute("DELETE FROM article_journalists WHERE journalist_id IN ($inIds)");
+
+            // If the target has no outlet recorded, adopt one from a source.
+            if (empty($target['last_outlet'] ?? null)) {
+                $srcOutlet = Database::selectOne(
+                    "SELECT last_outlet FROM journalists
+                     WHERE id IN ($inIds) AND last_outlet IS NOT NULL AND last_outlet <> ''
+                     LIMIT 1"
+                );
+                if ($srcOutlet !== null) {
+                    Database::execute(
+                        'UPDATE journalists SET last_outlet = :o WHERE id = :id',
+                        ['o' => (string)$srcOutlet['last_outlet'], 'id' => $targetId]
+                    );
+                }
+            }
+
+            $merged = Database::execute("DELETE FROM journalists WHERE id IN ($inIds)");
+            Database::commit();
+        } catch (\Throwable $e) {
+            Database::rollBack();
+            throw $e;
+        }
+
+        return [
+            'target_id'   => $targetId,
+            'target_name' => (string)$target['name'],
+            'merged'      => $merged,
+            'links_moved' => $moved,
+        ];
+    }
 }

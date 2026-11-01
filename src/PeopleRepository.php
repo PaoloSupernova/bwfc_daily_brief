@@ -292,14 +292,105 @@ final class PeopleRepository
     /** @return array<int, array<string,mixed>> */
     public static function all(bool $knownOnly = false): array
     {
-        $where = $knownOnly ? 'WHERE is_known = 1' : '';
+        $where = $knownOnly ? 'WHERE p.is_known = 1' : '';
         return Database::select(
-            "SELECT id, name, name_key, role, is_known, aliases, active
-             FROM people {$where}
-             ORDER BY is_known DESC,
-                      FIELD(role, 'player','staff','exec','other'),
-                      name ASC"
+            "SELECT p.id, p.name, p.name_key, p.role, p.is_known, p.aliases, p.active,
+                    COUNT(ap.article_id) AS article_count
+             FROM people p
+             LEFT JOIN article_people ap ON ap.person_id = p.id
+             {$where}
+             GROUP BY p.id, p.name, p.name_key, p.role, p.is_known, p.aliases, p.active
+             ORDER BY p.is_known DESC,
+                      FIELD(p.role, 'player','staff','exec','other'),
+                      p.name ASC"
         );
+    }
+
+    /**
+     * Merge one or more duplicate person records into a target record.
+     * All article links move to the target; each source's name and aliases are
+     * folded into the target's alias list so detection still catches the old
+     * spellings; the source records are then deleted. Transactional.
+     *
+     * @param array<int, int> $sourceIds
+     * @return array{target_id:int, target_name:string, merged:int, links_moved:int, aliases:string}
+     */
+    public static function merge(int $targetId, array $sourceIds): array
+    {
+        $sourceIds = array_values(array_unique(array_filter(
+            array_map('intval', $sourceIds),
+            static fn($id) => $id > 0 && $id !== $targetId
+        )));
+
+        $target = Database::selectOne(
+            'SELECT id, name, name_key, aliases FROM people WHERE id = :id',
+            ['id' => $targetId]
+        );
+        if ($target === null) {
+            throw new \RuntimeException('Target person not found.');
+        }
+        if ($sourceIds === []) {
+            return [
+                'target_id' => $targetId, 'target_name' => (string)$target['name'],
+                'merged' => 0, 'links_moved' => 0, 'aliases' => (string)($target['aliases'] ?? ''),
+            ];
+        }
+
+        $inIds = implode(',', $sourceIds); // ints only, safe to inline
+        $sources = Database::select("SELECT name, aliases FROM people WHERE id IN ($inIds)");
+
+        // Build the merged alias list, deduped by folded key, excluding the
+        // target's own name and anything blank.
+        $aliasDisplays = [];
+        $seen = [];
+        $add = function (string $s) use (&$aliasDisplays, &$seen, $target): void {
+            $s = trim($s, " \t\n\r\0\x0B\"',");
+            if ($s === '') return;
+            $k = self::foldKey($s);
+            if ($k === '' || $k === (string)$target['name_key'] || isset($seen[$k])) return;
+            $seen[$k] = true;
+            $aliasDisplays[] = $s;
+        };
+        foreach (explode(',', (string)($target['aliases'] ?? '')) as $a) $add($a);
+        foreach ($sources as $s) {
+            $add((string)$s['name']);
+            foreach (explode(',', (string)($s['aliases'] ?? '')) as $a) $add($a);
+        }
+        $newAliases = implode(', ', $aliasDisplays);
+        // aliases column is VARCHAR(500); trim to a comma boundary if needed.
+        if (strlen($newAliases) > 500) {
+            $newAliases = substr($newAliases, 0, 500);
+            $lastComma = strrpos($newAliases, ',');
+            if ($lastComma !== false) {
+                $newAliases = rtrim(substr($newAliases, 0, $lastComma));
+            }
+        }
+
+        Database::beginTransaction();
+        try {
+            $moved = Database::execute(
+                "UPDATE IGNORE article_people SET person_id = :t WHERE person_id IN ($inIds)",
+                ['t' => $targetId]
+            );
+            Database::execute("DELETE FROM article_people WHERE person_id IN ($inIds)");
+            Database::execute(
+                'UPDATE people SET aliases = :a WHERE id = :id',
+                ['a' => ($newAliases !== '' ? $newAliases : null), 'id' => $targetId]
+            );
+            $merged = Database::execute("DELETE FROM people WHERE id IN ($inIds)");
+            Database::commit();
+        } catch (\Throwable $e) {
+            Database::rollBack();
+            throw $e;
+        }
+
+        return [
+            'target_id'   => $targetId,
+            'target_name' => (string)$target['name'],
+            'merged'      => $merged,
+            'links_moved' => $moved,
+            'aliases'     => $newAliases,
+        ];
     }
 
     public static function create(string $name, string $role, string $aliases = ''): int
