@@ -23,6 +23,9 @@ function dashboardScreen() {
         alerts: [],
         dismissedAlerts: [],
 
+        // Trend alerts (movement in coverage)
+        trends: [],
+
         // Sentiment drill-down panel
         drillOpen: false,
         drillSentiment: '',
@@ -62,6 +65,35 @@ function dashboardScreen() {
                 this.loading = false;
             }
             this.loadAlerts();
+            this.loadTrends();
+        },
+
+        async loadTrends() {
+            try {
+                const base = (window.BWFC_BASE || '').replace(/\/public\/?$/, '');
+                const res = await fetch(base + '/api/trends.php');
+                const data = await res.json();
+                this.trends = data.trends || [];
+            } catch (e) {
+                this.trends = [];
+            }
+        },
+
+        // Trend items flagged banner=true ride in the morning alert banner
+        // alongside the reputation warnings (same shape: id/level/title/detail).
+        bannerTrends() {
+            return (this.trends || []).filter(t => t.banner);
+        },
+
+        trendsEmpty() {
+            return !this.trends || this.trends.length === 0;
+        },
+
+        // Indicator glyph for a trend row in the panel.
+        trendGlyph(t) {
+            if (t.direction === 'alert') return '⚠';
+            if (t.direction === 'down') return '↓';
+            return '↑';
         },
 
         // ============================================================
@@ -90,7 +122,11 @@ function dashboardScreen() {
         },
 
         visibleAlerts() {
-            return this.alerts.filter(a => !this.dismissedAlerts.includes(a.id));
+            const all = [...this.alerts, ...this.bannerTrends()]
+                .filter(a => !this.dismissedAlerts.includes(a.id));
+            // Warnings first; stable sort keeps reputation alerts ahead of trends within a level.
+            return all.sort((x, y) =>
+                (x.level === 'warning' ? 0 : 1) - (y.level === 'warning' ? 0 : 1));
         },
 
         dismissAlert(id) {

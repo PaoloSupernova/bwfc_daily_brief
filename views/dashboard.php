@@ -119,6 +119,28 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
                 <p class="dash__caption" x-show="!coverageTimelineEmpty()" x-cloak x-text="timelineCaption()"></p>
             </div>
 
+            <div class="dash__panel">
+                <h2 class="heading-section">What's changed</h2>
+                <p class="dash__panel-hint" x-show="trendsEmpty()" x-cloak>
+                    Nothing moving sharply this week — coverage is running close to its usual pattern.
+                </p>
+                <div class="trend-list" x-show="!trendsEmpty()" x-cloak>
+                    <template x-for="t in trends" :key="t.id">
+                        <div class="trend-item" :class="'trend-item--' + t.direction">
+                            <div class="trend-item__glyph" x-text="trendGlyph(t)"></div>
+                            <div class="trend-item__body">
+                                <div class="trend-item__title" x-text="t.title"></div>
+                                <div class="trend-item__detail" x-text="t.detail"></div>
+                            </div>
+                            <div class="trend-item__metric" x-text="t.metric"></div>
+                        </div>
+                    </template>
+                </div>
+                <p class="dash__caption" x-show="!trendsEmpty()" x-cloak>
+                    Movement vs the usual weekly pattern (last 7 days against the prior 3 weeks). The strongest also appear in the alert banner above.
+                </p>
+            </div>
+
             <div class="dash__row">
                 <div class="dash__panel dash__panel--half">
                     <h2 class="heading-section">Section share</h2>
