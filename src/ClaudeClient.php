@@ -78,15 +78,22 @@ final class ClaudeClient
             try {
                 return $this->request($payload);
             } catch (RuntimeException $e) {
-                $msg = $e->getMessage();
+                $msg = strtolower($e->getMessage());
 
                 $isTransient = str_contains($msg, 'temporarily busy')
                     || str_contains($msg, '529')
-                    || str_contains($msg, 'Timeout')
+                    || str_contains($msg, 'timeout')
                     || str_contains($msg, 'timed out')
-                    || str_contains($msg, 'Connection refused')
-                    || str_contains($msg, 'Could not resolve host')
-                    || str_contains($msg, 'Failed to connect');
+                    || str_contains($msg, 'connection refused')
+                    || str_contains($msg, 'could not resolve host')
+                    || str_contains($msg, 'failed to connect')
+                    || str_contains($msg, 'reset')            // connection reset by peer
+                    || str_contains($msg, 'recv failure')
+                    || str_contains($msg, 'send failure')
+                    || str_contains($msg, 'empty reply')
+                    || str_contains($msg, 'transfer closed')
+                    || str_contains($msg, 'ssl connect')
+                    || str_contains($msg, 'broken pipe');
 
                 if (!$isTransient || $attempt >= count($delays)) {
                     throw $e;
