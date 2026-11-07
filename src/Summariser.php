@@ -233,6 +233,93 @@ PROMPT;
     }
 
     /**
+     * One-shot classification: section, sentiment and topic in a SINGLE Claude
+     * call, replacing three separate round-trips. Sentiment is judged on the
+     * generated summary; section and topic on the article itself.
+     *
+     * This is the main latency win for the paste/processing flow — it turns the
+     * previous 4 sequential API calls (summary + section + sentiment + topic)
+     * into 2 (summary + this). On the rare occasion the model returns
+     * unparseable JSON, it falls back to the three individual calls so the
+     * editor still gets accurate suggestions.
+     *
+     * @return array{section: string, sentiment: string, topic: string}
+     */
+    public function analyse(string $headline, string $outlet, string $content, string $summary): array
+    {
+        $sections = BriefRepository::sections(true);
+        $sectionRules = '';
+        $allowedSections = [];
+        foreach ($sections as $s) {
+            $label = strtoupper($s['slug']);
+            $allowedSections[] = $label;
+            $description = trim((string)($s['routing_description'] ?? '')) ?: 'General section for ' . $s['name'];
+            $sectionRules .= "- {$label}: {$description}\n";
+        }
+        $topicRules = Topics::promptRules();
+        $excerpt = $this->truncateContent($content, 1500);
+        $sectionRules = trim($sectionRules);
+
+        $prompt = <<<PROMPT
+You are classifying a Bolton Wanderers news article for an internal media brief. Do THREE classifications and return them as JSON.
+
+Headline: {$headline}
+Outlet: {$outlet}
+Summary: {$summary}
+Content excerpt: {$excerpt}
+
+1. SECTION — choose the single best-fitting section label:
+{$sectionRules}
+
+2. SENTIMENT — from the perspective of Bolton Wanderers Football Club, is this POSITIVE (good news: win, signing, community event, positive profile, award), NEGATIVE (bad news: defeat, injury, controversy, criticism, legal issue), or NEUTRAL (factual/informational with no clear impact on the club)?
+
+3. TOPIC — choose the single best-fitting topic (the keyword before the colon):
+{$topicRules}
+
+Return ONLY a JSON object, no other text, in exactly this form:
+{"section":"SECTION_LABEL","sentiment":"positive|neutral|negative","topic":"topic_keyword"}
+PROMPT;
+
+        $parsed = $this->parseAnalysis($this->claude->complete($prompt, null, ['max_tokens' => 200]));
+
+        if ($parsed === null) {
+            // Unparseable JSON — fall back to the individual calls for accuracy.
+            return [
+                'section'   => $this->suggestSection($headline, $outlet, $content),
+                'sentiment' => $this->classifySentiment($headline, $summary),
+                'topic'     => $this->suggestTopic($headline, $outlet, $content),
+            ];
+        }
+
+        $section = strtoupper(trim((string)preg_replace('/[^A-Z_]/i', '', (string)($parsed['section'] ?? ''))));
+        if (!in_array($section, $allowedSections, true)) {
+            $section = $allowedSections[0] ?? 'BWFC';
+        }
+
+        $sentiment = strtolower(trim((string)($parsed['sentiment'] ?? 'neutral')));
+        if (!in_array($sentiment, ['positive', 'neutral', 'negative'], true)) {
+            $sentiment = 'neutral';
+        }
+
+        $topic = Topics::normalise((string)($parsed['topic'] ?? 'other'));
+
+        return ['section' => $section, 'sentiment' => $sentiment, 'topic' => $topic];
+    }
+
+    /** Parse the analyse() JSON reply, tolerating code fences / surrounding text. */
+    private function parseAnalysis(string $raw): ?array
+    {
+        $s = trim($raw);
+        $s = (string)preg_replace('/^```(?:json)?/i', '', $s);
+        $s = (string)preg_replace('/```$/', '', trim($s));
+        if (preg_match('/\{.*\}/s', $s, $m)) {
+            $s = $m[0];
+        }
+        $data = json_decode(trim($s), true);
+        return is_array($data) ? $data : null;
+    }
+
+    /**
      * @param array<int, array{headline: string, outlet: string, summary: string, section: string}> $articles
      */
     public function executiveSummary(array $articles): string

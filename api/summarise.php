@@ -58,10 +58,13 @@ if ($briefId > 0 && !$skipDuplicateCheck) {
     }
 }
 
+// Generate the summary, then classify section + sentiment + topic in a single
+// call (one round-trip instead of three) to keep processing fast.
 $summary   = $summariser->summariseArticle($headline, $outlet, $content, $ignoreRelevance);
-$section   = $summariser->suggestSection($headline, $outlet, $content);
-$sentiment = $summariser->classifySentiment($headline, $summary);
-$topic     = $summariser->suggestTopic($headline, $outlet, $content);
+$analysis  = $summariser->analyse($headline, $outlet, $content, $summary);
+$section   = $analysis['section'];
+$sentiment = $analysis['sentiment'];
+$topic     = $analysis['topic'];
 
 $violations = StyleGuard::check($summary);
 

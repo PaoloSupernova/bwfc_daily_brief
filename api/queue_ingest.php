@@ -129,14 +129,21 @@ if ($hasEnoughContent) {
     $wasPaywallFallback = true;
 }
 
-// Section suggestion returns a validated category label, so it is low risk even
-// from a headline alone. Run it either way, using the body when we have it.
+// Classify section + sentiment + topic in a single call (one round-trip instead
+// of three). Section/topic are validated category labels, low risk even from a
+// headline; sentiment is only stored when we have real body text to judge.
+$topic = 'other';
+$sentiment = null;
 try {
-    $suggestedSection = $summariser->suggestSection(
+    $analysis = $summariser->analyse(
         $headline,
         $outletName,
-        $hasEnoughContent ? $articleContent : $headline
+        $hasEnoughContent ? $articleContent : $headline,
+        $summary
     );
+    $suggestedSection = $analysis['section'];
+    $topic = $analysis['topic'];
+    $sentiment = $hasEnoughContent ? $analysis['sentiment'] : null;
 } catch (Throwable $e) {
     $suggestedSection = 'BWFC';
 }
@@ -161,13 +168,6 @@ if ($section === null) {
     api_error('No sections configured in the database', 500);
 }
 
-// Classify topic (uses body when we have it, else the headline).
-try {
-    $topic = $summariser->suggestTopic($headline, $outletName, $hasEnoughContent ? $articleContent : $headline);
-} catch (Throwable $e) {
-    $topic = 'other';
-}
-
 // Save article
 $articleId = BriefRepository::addArticle($briefId, [
     'section_id' => (int)$section['id'],
@@ -179,6 +179,7 @@ $articleId = BriefRepository::addArticle($briefId, [
     'summary_original' => $summary,
     'was_paywall_fallback' => $wasPaywallFallback,
     'topic' => $topic,
+    'sentiment' => $sentiment,
     'source_language' => $sourceLanguage ?? '',
     'image_url' => $ingestImageUrl = (!empty($fetchResult['success']) ? (string)($fetchResult['image_url'] ?? '') : ''),
     'image_cached' => ImageCache::cache($ingestImageUrl) ?? '',
