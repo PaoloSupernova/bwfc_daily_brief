@@ -31,8 +31,10 @@ if (!filter_var($url, FILTER_VALIDATE_URL)) {
 // current brief is excluded so re-pasting within this session isn't flagged.
 $priorCoverage = BriefRepository::findPriorCoverage($url, $briefId);
 
+$tStart = microtime(true);
 $fetcher = new ArticleFetcher();
 $result = $fetcher->fetch($url);
+$fetchMs = (int)round((microtime(true) - $tStart) * 1000);
 
 // Detect known BWFC people named in the article, to prefill the editor field.
 $detectText = trim((string)($result['headline'] ?? '') . ' ' . (string)($result['content'] ?? ''));
@@ -41,4 +43,5 @@ $result['people_detected'] = $detectText !== '' ? PeopleRepository::detectNames(
 api_success([
     'article'        => $result,
     'prior_coverage' => $priorCoverage,
+    '_timing'        => ['fetch_ms' => $fetchMs],
 ]);

@@ -138,8 +138,7 @@ try {
     $analysis = $summariser->analyse(
         $headline,
         $outletName,
-        $hasEnoughContent ? $articleContent : $headline,
-        $summary
+        $hasEnoughContent ? $articleContent : $headline
     );
     $suggestedSection = $analysis['section'];
     $topic = $analysis['topic'];

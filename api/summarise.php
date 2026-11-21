@@ -30,41 +30,52 @@ if ($headline === '' || $content === '') {
 
 $summariser = new Summariser();
 
+$tStart = microtime(true);
+
 // Translate non-English content to English (via Sonnet) so the analysis below
 // runs on English and stays consistent. English text is detected locally and
-// passes through untouched.
+// passes through untouched (no API call).
 $translation = Translator::toEnglish($content, $headline);
 $content = $translation['text'];
 $sourceLanguage = $translation['is_english'] ? null : $translation['language'];
+$tAfterTranslate = microtime(true);
 
-// Duplicate detection: if a brief_id is supplied and we're not forcing a full summary,
-// check whether this article covers a story already in the brief.
-if ($briefId > 0 && !$skipDuplicateCheck) {
-    $existing = BriefRepository::standaloneArticlesForBrief($briefId);
-    if (count($existing) > 0) {
-        $duplicate = $summariser->detectDuplicate($headline, $content, $existing);
-        if ($duplicate !== null) {
-            AuditLog::record('duplicate_detected', 'article', null, [
-                'brief_id' => $briefId,
-                'headline' => $headline,
-                'parent_id' => $duplicate['article_id'],
-            ]);
-            api_success([
-                'duplicate' => true,
-                'parent_id' => $duplicate['article_id'],
-                'parent_headline' => $duplicate['headline'],
-            ]);
-        }
-    }
+// Summary, section/sentiment/topic classification and duplicate detection all
+// run CONCURRENTLY inside processArticle(), so the AI wait is the slowest single
+// call, not their sum. Duplicate detection only runs when the brief already has
+// articles.
+$existing = ($briefId > 0 && !$skipDuplicateCheck)
+    ? BriefRepository::standaloneArticlesForBrief($briefId)
+    : [];
+
+$result = $summariser->processArticle($headline, $outlet, $content, $ignoreRelevance, $existing);
+$tAfterProcess = microtime(true);
+
+$timing = [
+    'translate_ms' => (int)round(($tAfterTranslate - $tStart) * 1000),
+    'process_ms'   => (int)round(($tAfterProcess - $tAfterTranslate) * 1000),
+    'total_ms'     => (int)round((microtime(true) - $tStart) * 1000),
+];
+
+// Article duplicates one already in the brief — report that and stop.
+if (isset($result['duplicate'])) {
+    AuditLog::record('duplicate_detected', 'article', null, [
+        'brief_id' => $briefId,
+        'headline' => $headline,
+        'parent_id' => $result['duplicate']['article_id'],
+    ]);
+    api_success([
+        'duplicate' => true,
+        'parent_id' => $result['duplicate']['article_id'],
+        'parent_headline' => $result['duplicate']['headline'],
+        '_timing' => $timing,
+    ]);
 }
 
-// Generate the summary, then classify section + sentiment + topic in a single
-// call (one round-trip instead of three) to keep processing fast.
-$summary   = $summariser->summariseArticle($headline, $outlet, $content, $ignoreRelevance);
-$analysis  = $summariser->analyse($headline, $outlet, $content, $summary);
-$section   = $analysis['section'];
-$sentiment = $analysis['sentiment'];
-$topic     = $analysis['topic'];
+$summary   = $result['summary'];
+$section   = $result['section'];
+$sentiment = $result['sentiment'];
+$topic     = $result['topic'];
 
 $violations = StyleGuard::check($summary);
 
@@ -74,6 +85,7 @@ AuditLog::record('article_summary_generated', 'article', null, [
     'suggested_section' => $section,
     'sentiment'         => $sentiment,
     'style_violations'  => count($violations['violations']),
+    'process_ms'        => $timing['process_ms'],
 ]);
 
 api_success([
@@ -83,4 +95,5 @@ api_success([
     'suggested_topic'  => $topic,
     'source_language'  => $sourceLanguage,
     'style_check'      => $violations,
+    '_timing'          => $timing,
 ]);

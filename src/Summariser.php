@@ -33,7 +33,15 @@ final class Summariser
         if (count($existingArticles) === 0) {
             return null;
         }
+        $raw = $this->claude->complete($this->buildDuplicatePrompt($headline, $content, $existingArticles));
+        return $this->parseDuplicateResult($raw, $existingArticles);
+    }
 
+    /**
+     * @param array<int, array{id:int, headline:string, summary:string}> $existingArticles
+     */
+    private function buildDuplicatePrompt(string $headline, string $content, array $existingArticles): string
+    {
         $existingList = '';
         foreach ($existingArticles as $a) {
             $existingList .= '[' . $a['id'] . '] ' . $a['headline'] . "\n";
@@ -46,7 +54,7 @@ final class Summariser
 
         $contentExcerpt = $this->truncateContent($content, 800);
 
-        $prompt = <<<PROMPT
+        return <<<PROMPT
 You are a duplicate story detector for a football news digest.
 
 NEW ARTICLE
@@ -61,28 +69,40 @@ If it is a genuinely different story, reply with ONLY the word: UNIQUE
 
 Do not include any explanation. One word or number only.
 PROMPT;
+    }
 
-        $raw = trim($this->claude->complete($prompt));
-
+    /**
+     * @param array<int, array{id:int, headline:string, summary:string}> $existingArticles
+     * @return array{article_id:int, headline:string}|null
+     */
+    private function parseDuplicateResult(string $raw, array $existingArticles): ?array
+    {
+        $raw = trim($raw);
         if (strtoupper($raw) === 'UNIQUE') {
             return null;
         }
-
         $matched = (int)preg_replace('/\D/', '', $raw);
         if ($matched === 0) {
             return null;
         }
-
         foreach ($existingArticles as $a) {
             if ((int)$a['id'] === $matched) {
                 return ['article_id' => $matched, 'headline' => (string)$a['headline']];
             }
         }
-
         return null;
     }
 
     public function summariseArticle(string $headline, string $outlet, string $content, bool $ignoreRelevance = false): string
+    {
+        return $this->claude->complete($this->buildSummaryPrompt($headline, $outlet, $content, $ignoreRelevance));
+    }
+
+    /**
+     * Build the full article-summary prompt: knowledge base + recent editor
+     * edits (few-shot style) + the task template + optional inclusion override.
+     */
+    private function buildSummaryPrompt(string $headline, string $outlet, string $content, bool $ignoreRelevance): string
     {
         $template = $this->getPromptTemplate('article_summary');
         $prompt = $this->hydrate($template, [
@@ -100,11 +120,7 @@ PROMPT;
               . "lacks relevance to Bolton Wanderers, and do not add any commentary about its relevance to the club."
             : '';
 
-        // Prepend the knowledge base (facts/terminology/style) for grounding,
-        // then recent editor edits as few-shot style guidance, then the task.
-        return $this->claude->complete(
-            KnowledgeBase::promptBlock() . $this->editStyleExamplesBlock() . $prompt . $override
-        );
+        return KnowledgeBase::promptBlock() . $this->editStyleExamplesBlock() . $prompt . $override;
     }
 
     /**
@@ -234,18 +250,29 @@ PROMPT;
 
     /**
      * One-shot classification: section, sentiment and topic in a SINGLE Claude
-     * call, replacing three separate round-trips. Sentiment is judged on the
-     * generated summary; section and topic on the article itself.
+     * call. Sentiment is judged from the headline + content (not the summary),
+     * which means this call does NOT depend on the summary and can run
+     * concurrently with it — see processArticle().
      *
-     * This is the main latency win for the paste/processing flow — it turns the
-     * previous 4 sequential API calls (summary + section + sentiment + topic)
-     * into 2 (summary + this). On the rare occasion the model returns
-     * unparseable JSON, it falls back to the three individual calls so the
-     * editor still gets accurate suggestions.
+     * On the rare occasion the model returns unparseable JSON, it falls back to
+     * the individual classifier calls so suggestions stay accurate.
      *
      * @return array{section: string, sentiment: string, topic: string}
      */
-    public function analyse(string $headline, string $outlet, string $content, string $summary): array
+    public function analyse(string $headline, string $outlet, string $content): array
+    {
+        [$prompt, $allowedSections] = $this->buildAnalysePrompt($headline, $outlet, $content);
+        $raw = $this->claude->complete($prompt, null, ['max_tokens' => 200]);
+        return $this->validateAnalysis($this->parseAnalysis($raw), $allowedSections, $headline, $outlet, $content);
+    }
+
+    /**
+     * Build the combined classification prompt and the list of allowed section
+     * labels (for validating the reply).
+     *
+     * @return array{0:string, 1:array<int,string>}
+     */
+    private function buildAnalysePrompt(string $headline, string $outlet, string $content): array
     {
         $sections = BriefRepository::sections(true);
         $sectionRules = '';
@@ -265,7 +292,6 @@ You are classifying a Bolton Wanderers news article for an internal media brief.
 
 Headline: {$headline}
 Outlet: {$outlet}
-Summary: {$summary}
 Content excerpt: {$excerpt}
 
 1. SECTION — choose the single best-fitting section label:
@@ -280,13 +306,23 @@ Return ONLY a JSON object, no other text, in exactly this form:
 {"section":"SECTION_LABEL","sentiment":"positive|neutral|negative","topic":"topic_keyword"}
 PROMPT;
 
-        $parsed = $this->parseAnalysis($this->claude->complete($prompt, null, ['max_tokens' => 200]));
+        return [$prompt, $allowedSections];
+    }
 
+    /**
+     * Validate a parsed analysis reply, falling back to individual classifier
+     * calls when the JSON was unusable.
+     *
+     * @param array<string,mixed>|null $parsed
+     * @param array<int,string> $allowedSections
+     * @return array{section:string, sentiment:string, topic:string}
+     */
+    private function validateAnalysis(?array $parsed, array $allowedSections, string $headline, string $outlet, string $content): array
+    {
         if ($parsed === null) {
-            // Unparseable JSON — fall back to the individual calls for accuracy.
             return [
                 'section'   => $this->suggestSection($headline, $outlet, $content),
-                'sentiment' => $this->classifySentiment($headline, $summary),
+                'sentiment' => $this->classifySentiment($headline, $content),
                 'topic'     => $this->suggestTopic($headline, $outlet, $content),
             ];
         }
@@ -304,6 +340,63 @@ PROMPT;
         $topic = Topics::normalise((string)($parsed['topic'] ?? 'other'));
 
         return ['section' => $section, 'sentiment' => $sentiment, 'topic' => $topic];
+    }
+
+    /**
+     * Process an article in ONE concurrent batch: summary, classification and
+     * (optionally) duplicate detection all fire at once instead of back-to-back.
+     * Total wall-clock ≈ the slowest single call rather than their sum.
+     *
+     * Returns either ['duplicate' => ['article_id'=>int,'headline'=>string]]
+     * when the article matches one already in the brief, or
+     * ['summary'=>string, 'section'=>string, 'sentiment'=>string, 'topic'=>string].
+     *
+     * @param array<int, array{id:int, headline:string, summary:string}> $existingArticles
+     * @return array<string, mixed>
+     */
+    public function processArticle(
+        string $headline,
+        string $outlet,
+        string $content,
+        bool $ignoreRelevance = false,
+        array $existingArticles = []
+    ): array {
+        [$analysePrompt, $allowedSections] = $this->buildAnalysePrompt($headline, $outlet, $content);
+
+        $jobs = [
+            'summary' => ['prompt' => $this->buildSummaryPrompt($headline, $outlet, $content, $ignoreRelevance)],
+            'analyse' => ['prompt' => $analysePrompt, 'options' => ['max_tokens' => 200]],
+        ];
+        if (count($existingArticles) > 0) {
+            $jobs['duplicate'] = ['prompt' => $this->buildDuplicatePrompt($headline, $content, $existingArticles), 'options' => ['max_tokens' => 16]];
+        }
+
+        $results = $this->claude->completeConcurrent($jobs);
+
+        // If the article duplicates one already in the brief, report that and
+        // discard the (now unused) summary/analysis — duplicates are rare, so
+        // computing them concurrently is a good trade for the common path.
+        if (isset($results['duplicate'])) {
+            $dup = $this->parseDuplicateResult($results['duplicate'], $existingArticles);
+            if ($dup !== null) {
+                return ['duplicate' => $dup];
+            }
+        }
+
+        $analysis = $this->validateAnalysis(
+            $this->parseAnalysis($results['analyse'] ?? ''),
+            $allowedSections,
+            $headline,
+            $outlet,
+            $content
+        );
+
+        return [
+            'summary'   => trim((string)($results['summary'] ?? '')),
+            'section'   => $analysis['section'],
+            'sentiment' => $analysis['sentiment'],
+            'topic'     => $analysis['topic'],
+        ];
     }
 
     /** Parse the analyse() JSON reply, tolerating code fences / surrounding text. */

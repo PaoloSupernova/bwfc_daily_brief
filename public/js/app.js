@@ -147,6 +147,7 @@ function briefEditor(initial) {
                     brief_id: this.briefId,
                 });
                 const a = data.article;
+                this._fetchMs = (data._timing && data._timing.fetch_ms) || 0;
 
                 this.pending = emptyPending();
                 this.pending.url = this.urlInput;
@@ -257,7 +258,12 @@ function briefEditor(initial) {
                 this.showFallback = false;
                 this.showReview = true;
                 this.duplicateSuggestion = null;
-                this.statusMessage = '';
+
+                // Show a timing breakdown so slow steps are visible at a glance.
+                const fetchS = ((this._fetchMs || 0) / 1000).toFixed(1);
+                const aiS = (((data._timing && data._timing.total_ms) || 0) / 1000).toFixed(1);
+                this.statusMessage = `Ready — fetch ${fetchS}s · AI ${aiS}s`;
+                this._fetchMs = 0;
             } catch (err) {
                 this.statusMessage = 'Error: ' + err.message;
             } finally {
