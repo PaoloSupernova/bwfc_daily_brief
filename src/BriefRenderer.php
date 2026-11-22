@@ -666,10 +666,12 @@ final class BriefRenderer
     }
 
     /**
-     * The BWFC marque as a base64 PNG data URI for the masthead. Serves a small,
-     * GD-re-encoded copy (tiny payload + guaranteed-valid PNG), falling back to
-     * the source file. Returns '' if the marque is missing, empty or not a valid
-     * PNG — callers then draw the SVG crest instead of a broken image.
+     * The BWFC marque as a base64 JPEG data URI for the masthead. The source
+     * marque is an alpha-channel PNG, which mPDF renders unreliably (broken
+     * image), so we flatten it onto white (it sits on a white chip anyway) and
+     * re-encode to a small cached JPEG — reliable in both mPDF and the browser.
+     * Returns '' if the marque is missing or GD can't process it, in which case
+     * callers draw a text monogram instead of a broken image.
      */
     private static function logoDataUri(): string
     {
@@ -678,27 +680,26 @@ final class BriefRenderer
             return '';
         }
 
-        // Re-encode to a small cached copy so the data URI is light and valid.
         $cacheDir = PUBLIC_PATH . '/img/cache';
-        $cache = $cacheDir . '/masthead-logo.png';
+        $cache = $cacheDir . '/masthead-logo.jpg';
         if (!is_file($cache) || @filemtime($cache) < @filemtime($src)) {
             self::buildLogoCache($src, $cache, $cacheDir);
         }
-        $use = is_file($cache) && filesize($cache) > 8 ? $cache : $src;
-
-        $data = @file_get_contents($use);
-        // Reject empty/corrupt files (a 0-byte checkout would otherwise emit
-        // "data:image/png;base64," and render as a broken image).
-        if ($data === false || strlen($data) < 8 || substr($data, 0, 8) !== "\x89PNG\r\n\x1a\n") {
+        if (!is_file($cache) || filesize($cache) < 8) {
             return '';
         }
-        return 'data:image/png;base64,' . base64_encode($data);
+
+        $data = @file_get_contents($cache);
+        if ($data === false || strlen($data) < 2 || substr($data, 0, 2) !== "\xFF\xD8") {
+            return '';
+        }
+        return 'data:image/jpeg;base64,' . base64_encode($data);
     }
 
-    /** Best-effort: write a ~120px, alpha-preserving copy of the marque to cache. */
+    /** Flatten the marque onto white and write a small cached JPEG (no alpha). */
     private static function buildLogoCache(string $src, string $cache, string $cacheDir): void
     {
-        if (!function_exists('imagecreatefrompng')) {
+        if (!function_exists('imagecreatefrompng') || !function_exists('imagejpeg')) {
             return;
         }
         try {
@@ -715,41 +716,36 @@ final class BriefRenderer
             $nh = $h >  $w ? $target : (int)max(1, round($target * $h / $w));
 
             $out = imagecreatetruecolor($nw, $nh);
-            imagealphablending($out, false);
-            imagesavealpha($out, true);
-            $transparent = imagecolorallocatealpha($out, 0, 0, 0, 127);
-            imagefilledrectangle($out, 0, 0, $nw, $nh, $transparent);
+            $white = imagecolorallocate($out, 255, 255, 255);
+            imagefilledrectangle($out, 0, 0, $nw, $nh, $white);
+            imagealphablending($out, true); // transparent marque areas blend to white
             imagecopyresampled($out, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
 
             if (!is_dir($cacheDir)) {
                 @mkdir($cacheDir, 0755, true);
             }
-            @imagepng($out, $cache, 6);
+            @imagejpeg($out, $cache, 90);
             imagedestroy($im);
             imagedestroy($out);
         } catch (\Throwable $e) {
-            // Fall back to the source file.
+            // Leave no cache; logoDataUri() then returns '' and the monogram shows.
         }
     }
 
-    /** A clean inline-SVG BWFC crest, used when the marque PNG isn't usable. */
-    private static function crestSvg(int $size): string
-    {
-        return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">'
-            . '<path d="M15 2 L26 6 V15 C26 23 20 27 15 28 C10 27 4 23 4 15 V6 Z" fill="' . self::NAVY . '"/>'
-            . '<path d="M15 5 L23 8 V15 C23 21 18.5 24.3 15 25.2 C11.5 24.3 7 21 7 15 V8 Z" fill="#FFFFFF"/>'
-            . '<path d="M15 8 L20 10 V15 C20 19 17 21 15 21.6 C13 21 10 19 10 15 V10 Z" fill="' . self::RED . '"/>'
-            . '</svg>';
-    }
-
-    /** Masthead mark as a data-URI <img> (real marque, else SVG crest), sized in the given unit. */
+    /**
+     * Masthead mark: the real marque as a flattened JPEG <img>, or — if the file
+     * is missing/unprocessable — a plain "BWFC" text monogram that needs no image
+     * and renders everywhere.
+     */
     private static function mastheadMarkImg(float $size, string $unit): string
     {
         $logo = self::logoDataUri();
-        $src = $logo !== ''
-            ? $logo
-            : 'data:image/svg+xml;base64,' . base64_encode(self::crestSvg(40));
-        return '<img src="' . $src . '" style="width: ' . $size . $unit . '; height: ' . $size . $unit . ';">';
+        if ($logo !== '') {
+            return '<img src="' . $logo . '" style="width: ' . $size . $unit . '; height: ' . $size . $unit . ';">';
+        }
+        $fontPt = $unit === 'pt' ? ($size * 0.30) . 'pt' : ($size * 0.30) . 'px';
+        return '<div style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; color: ' . self::NAVY
+            . '; font-size: ' . $fontPt . '; letter-spacing: 0.5px; line-height: ' . $size . $unit . '; text-align: center; width: ' . $size . $unit . ';">BWFC</div>';
     }
 
     private static function isLocalOutlet(string $outlet): bool
