@@ -44,6 +44,20 @@ final class PdfExporter
         $mpdf->SetAuthor('BWFC Communications');
         $mpdf->SetCreator('BWFC Daily Brief Tool');
 
+        // Running footer with page numbers (freshened layout; rollback via
+        // BRIEF_FRESH_PDF=false, which also drops the new header/chips).
+        if ((bool) env('BRIEF_FRESH_PDF', true)) {
+            $mpdf->SetHTMLFooter(
+                '<div style="font-family: satoshi, Arial, sans-serif; font-size: 7.5pt; color: #8A8F99; '
+                . 'padding: 4pt 22pt 0; border-top: 0.5pt solid #E3E5EA;">'
+                . '<table width="100%"><tr>'
+                . '<td align="left">BWFC Daily Brief &mdash; ' . htmlspecialchars($date, ENT_QUOTES) . '</td>'
+                . '<td align="center" style="letter-spacing: 1pt;">INTERNAL USE ONLY</td>'
+                . '<td align="right">Page {PAGENO} of {nbpg}</td>'
+                . '</tr></table></div>'
+            );
+        }
+
         $mpdf->WriteHTML($html);
 
         return $mpdf->Output('', 'S');

@@ -21,6 +21,12 @@ final class BriefRenderer
     private const BLUE = '#003976';
     private const RED = '#EF3E33';
 
+    /** Local-outlet name fragments, for the "today in numbers" local/national split. */
+    private const LOCAL_OUTLETS = [
+        'bwfc.co.uk', 'bolton news', 'lancashire evening post',
+        'manchester evening news', 'bwitc', 'bolton stadium hotel',
+    ];
+
     private const FONT_BODY = "'Satoshi', Arial, sans-serif";
     private const FONT_HEAD = "'Nippo', 'Arial Narrow', Arial, sans-serif";
 
@@ -467,13 +473,55 @@ final class BriefRenderer
             .article-more-label { font-weight: 700; color: ' . self::NAVY . '; }
             .article-more-link { color: ' . self::BLUE . '; text-decoration: underline; }
             .article-more-sep { color: #BBBBBB; margin: 0 3pt; }
+
+            /* --- Freshened header (masthead + numbers + sentiment bar) --- */
+            .mast td { padding: 12pt 0; }
+            .mast-logo { padding-left: 22pt !important; }
+            .mast-mid { padding-left: 11pt !important; }
+            .mast-date-cell { padding-right: 22pt !important; }
+            .mast-word { font-family: nippo, Arial, sans-serif; font-size: 16pt; font-weight: bold; color: #FFFFFF; }
+            .mast-light { color: #B9C0D0; font-weight: normal; }
+            .mast-sub { font-size: 7.5pt; letter-spacing: 1.5pt; color: #9AA3B5; margin-top: 3pt; }
+            .mast-date { font-family: nippo, Arial, sans-serif; font-size: 11pt; font-weight: bold; color: #FFFFFF; }
+            .mast-edition { font-size: 8pt; color: #9AA3B5; margin-top: 2pt; }
+            .mast-rule { height: 3pt; background-color: ' . self::RED . '; font-size: 1pt; line-height: 3pt; }
+            .numbers td { padding: 7pt 12pt; }
+            .num-first { padding-left: 22pt !important; }
+            .num-last { padding-right: 22pt !important; }
+            .num-n { font-family: nippo, Arial, sans-serif; font-weight: bold; font-size: 11pt; color: #FFFFFF; }
+            .num-l { font-size: 7.5pt; letter-spacing: 0.5pt; color: #9AA3B5; }
+            .sentbar-wrap { margin: 12pt 22pt 0; }
+            .sentbar-label { font-size: 7.5pt; letter-spacing: 1pt; color: #8A8F99; margin-bottom: 4pt; }
+            .sentbar td { font-size: 2pt; line-height: 9pt; }
+            .sentbar-key { font-size: 8pt; color: #6A6A6A; margin-top: 5pt; }
+
+            /* --- LEAD pill + per-article intelligence chips --- */
+            .lead-pill { font-family: nippo, Arial, sans-serif; font-size: 7.5pt; font-weight: bold; color: #FFFFFF; background-color: ' . self::RED . '; padding: 2pt 7pt; letter-spacing: 1pt; }
+            .chips { margin-top: 7pt; }
+            .chip-ic { font-size: 8pt; color: #3A3F49; background-color: #FFFFFF; border: 0.5pt solid #DFE2E8; border-radius: 7pt; padding: 2pt 6pt; }
+            .chip-k { color: #8A8F99; font-size: 7pt; }
+            .chip-topic { background-color: #EEF3FB; border-color: #CDD8EA; color: ' . self::BLUE . '; }
+            .chip-pos { background-color: #EAFAEF; border-color: #BFE3CB; color: #1E5D2C; }
+            .chip-neu { background-color: #F3F3F3; border-color: #E0E0E0; color: #555555; }
+            .chip-neg { background-color: #FDEEEE; border-color: #F2C9C9; color: #8C1A1A; }
         </style></head><body>';
 
-        if ($bannerHtml !== '') {
-            $html .= '<div class="banner">' . $bannerHtml . '</div>';
-        }
+        $fresh = self::freshPdf();
 
-        $html .= '<div class="header"><div class="header-title">DAILY BRIEF: ' . strtoupper(htmlspecialchars($date, ENT_QUOTES)) . '</div></div>';
+        if ($fresh) {
+            // Freshened header: masthead + "today in numbers" + day-sentiment bar.
+            $stats = self::briefStats($grouped);
+            $html .= self::mastheadPdf($date);
+            $html .= '<div class="mast-rule">&nbsp;</div>';
+            $html .= self::numbersStripPdf($stats);
+            $html .= self::sentimentBarPdf($stats);
+        } else {
+            // Classic header (rollback via BRIEF_FRESH_PDF=false).
+            if ($bannerHtml !== '') {
+                $html .= '<div class="banner">' . $bannerHtml . '</div>';
+            }
+            $html .= '<div class="header"><div class="header-title">DAILY BRIEF: ' . strtoupper(htmlspecialchars($date, ENT_QUOTES)) . '</div></div>';
+        }
 
         $html .= '<div class="click-note">&#128279; Click any headline to read the full article online.</div>';
 
@@ -544,12 +592,18 @@ final class BriefRenderer
                     $summaryTag .= '<div style="font-size: 9pt; color: #777777; font-style: italic; margin-top: 4pt;">Translated from ' . htmlspecialchars($lang, ENT_QUOTES) . '.</div>';
                 }
 
+                // Per-article intelligence chips (topic / sentiment / byline, plus
+                // people mentioned on the lead). Only in the freshened layout.
+                $heroChips = $fresh ? self::articleChipsPdf($article, true) : '';
+                $cardChips = $fresh ? self::articleChipsPdf($article, false) : '';
+                $leadPill  = $fresh ? '<div style="margin-bottom: 6pt;"><span class="lead-pill">LEAD</span></div>' : '';
+
                 // <a name> is the in-document jump target for the contents list.
                 $cardHtml = '<div class="article-card" id="' . $anchor . '"><a name="' . $anchor . '"></a>';
                 if ($mode === 'hero') {
-                    $cardHtml .= $kicker . $headlineTag
+                    $cardHtml .= $leadPill . $kicker . $headlineTag
                         . '<div class="article-hero-wrap"><img src="' . $imgSrc . '" class="article-img-hero"></div>'
-                        . $summaryTag . $moreHtml;
+                        . $summaryTag . $moreHtml . $heroChips;
                 } elseif ($mode === 'left' || $mode === 'right') {
                     // Two-column table (mPDF renders these cleanly; floats don't).
                     $imgCell = '<td width="150" style="width: 150pt;"><img src="' . $imgSrc . '" class="article-img-side"></td>';
@@ -558,9 +612,9 @@ final class BriefRenderer
                     $row = $mode === 'left' ? ($imgCell . $txtCell) : ($txtCell . $imgCell);
                     $cardHtml .= $kicker . $headlineTag
                         . '<table class="article-sidetable"><tr>' . $row . '</tr></table>'
-                        . $moreHtml;
+                        . $moreHtml . $cardChips;
                 } else {
-                    $cardHtml .= $kicker . $headlineTag . $summaryTag . $moreHtml;
+                    $cardHtml .= $kicker . $headlineTag . $summaryTag . $moreHtml . $cardChips;
                 }
                 $cardHtml .= '</div>';
 
@@ -584,6 +638,187 @@ final class BriefRenderer
     // ============================================================
     // HELPERS
     // ============================================================
+
+    // ============================================================
+    // FRESHENED PDF HEADER + CHIPS (gated by BRIEF_FRESH_PDF, default on)
+    // ============================================================
+
+    /** Whether the freshened PDF layout is on. Rollback: set BRIEF_FRESH_PDF=false. */
+    private static function freshPdf(): bool
+    {
+        return (bool) env('BRIEF_FRESH_PDF', true);
+    }
+
+    /** The BWFC marque as a base64 data URI, for the masthead. '' if missing. */
+    private static function logoDataUri(): string
+    {
+        $path = BASE_PATH . '/public/img/bwfc-marque.png';
+        if (!is_file($path)) {
+            return '';
+        }
+        $data = @file_get_contents($path);
+        if ($data === false) {
+            return '';
+        }
+        return 'data:image/png;base64,' . base64_encode($data);
+    }
+
+    private static function isLocalOutlet(string $outlet): bool
+    {
+        $o = strtolower($outlet);
+        foreach (self::LOCAL_OUTLETS as $frag) {
+            if (str_contains($o, $frag)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Headline stats for the "today in numbers" strip, from the displayed
+     * (parent) stories.
+     *
+     * @param array<string, array<int, array<string,mixed>>> $grouped
+     * @return array{articles:int,outlets:int,local:int,national:int,positive:int,neutral:int,negative:int}
+     */
+    private static function briefStats(array $grouped): array
+    {
+        $outlets = [];
+        $local = 0; $national = 0; $pos = 0; $neu = 0; $neg = 0; $count = 0;
+
+        foreach ($grouped as $arts) {
+            foreach ($arts as $a) {
+                $count++;
+                $outlet = (string)($a['outlet_name'] ?? '');
+                $outlets[strtolower(trim($outlet))] = true;
+                if (self::isLocalOutlet($outlet)) { $local++; } else { $national++; }
+                switch ((string)($a['sentiment'] ?? '')) {
+                    case 'positive': $pos++; break;
+                    case 'negative': $neg++; break;
+                    case 'neutral':  $neu++; break;
+                }
+            }
+        }
+
+        return [
+            'articles' => $count,
+            'outlets'  => count(array_filter(array_keys($outlets), fn($k) => $k !== '')),
+            'local'    => $local,
+            'national' => $national,
+            'positive' => $pos,
+            'neutral'  => $neu,
+            'negative' => $neg,
+        ];
+    }
+
+    private static function mastheadPdf(string $date): string
+    {
+        $logo = self::logoDataUri();
+        $logoCell = $logo !== ''
+            ? '<td class="mast-logo" width="52" valign="middle"><img src="' . $logo . '" style="width: 40pt; height: 40pt;"></td>'
+            : '';
+        $midPad = $logo !== '' ? 'mast-mid' : 'mast-logo';
+
+        return '<table class="mast" style="width: 100%; background-color: ' . self::NAVY . ';"><tr>'
+            . $logoCell
+            . '<td class="' . $midPad . '" valign="middle">'
+            . '<div class="mast-word">Bolton Wanderers <span class="mast-light">Media Brief</span></div>'
+            . '<div class="mast-sub">COMMUNICATIONS &amp; MEDIA INTELLIGENCE</div></td>'
+            . '<td class="mast-date-cell" valign="middle" align="right">'
+            . '<div class="mast-date">' . htmlspecialchars($date, ENT_QUOTES) . '</div>'
+            . '<div class="mast-edition">Morning edition</div></td>'
+            . '</tr></table>';
+    }
+
+    /** @param array{articles:int,outlets:int,local:int,national:int,positive:int,neutral:int,negative:int} $s */
+    private static function numbersStripPdf(array $s): string
+    {
+        $face = static function (string $sent, int $n): string {
+            $uri = self::sentimentFace($sent);
+            $img = $uri !== '' ? '<img src="' . $uri . '" width="11" height="11" style="vertical-align: middle;"> ' : '';
+            return $img . '<span class="num-n" style="font-size: 9pt;">' . $n . '</span>';
+        };
+
+        return '<table class="numbers" style="width: 100%; background-color: #0F1730;"><tr>'
+            . '<td class="num-first"><span class="num-n">' . $s['articles'] . '</span> <span class="num-l">ARTICLES</span></td>'
+            . '<td><span class="num-n">' . $s['outlets'] . '</span> <span class="num-l">OUTLETS</span></td>'
+            . '<td><span class="num-n">' . $s['local'] . '</span> <span class="num-l">LOCAL</span> &nbsp; '
+            . '<span class="num-n">' . $s['national'] . '</span> <span class="num-l">NAT&rsquo;L</span></td>'
+            . '<td class="num-last" align="right"><span class="num-l">SENTIMENT</span> &nbsp; '
+            . $face('positive', $s['positive']) . ' &nbsp; ' . $face('neutral', $s['neutral']) . ' &nbsp; ' . $face('negative', $s['negative'])
+            . '</td></tr></table>';
+    }
+
+    /** @param array{positive:int,neutral:int,negative:int} $s */
+    private static function sentimentBarPdf(array $s): string
+    {
+        $total = $s['positive'] + $s['neutral'] + $s['negative'];
+        if ($total === 0) {
+            return '';
+        }
+        $pp = (int)round($s['positive'] / $total * 100);
+        $pn = (int)round($s['neutral'] / $total * 100);
+        $pg = 100 - $pp - $pn;
+        if ($pg < 0) { $pg = 0; }
+
+        $cells = '';
+        if ($pp > 0) { $cells .= '<td width="' . $pp . '%" style="background-color: #2E8B57;">&nbsp;</td>'; }
+        if ($pn > 0) { $cells .= '<td width="' . $pn . '%" style="background-color: #999999;">&nbsp;</td>'; }
+        if ($pg > 0) { $cells .= '<td width="' . $pg . '%" style="background-color: #C0392B;">&nbsp;</td>'; }
+
+        return '<div class="sentbar-wrap">'
+            . '<div class="sentbar-label">TODAY&rsquo;S COVERAGE TONE</div>'
+            . '<table class="sentbar" style="width: 100%;"><tr>' . $cells . '</tr></table>'
+            . '<div class="sentbar-key">'
+            . '<span style="color: #2E8B57;">&#9679;</span> ' . $pp . '% positive &nbsp;&nbsp; '
+            . '<span style="color: #999999;">&#9679;</span> ' . $pn . '% neutral &nbsp;&nbsp; '
+            . '<span style="color: #C0392B;">&#9679;</span> ' . $pg . '% negative</div>'
+            . '</div>';
+    }
+
+    /**
+     * Per-article intelligence chips: topic, sentiment, byline, and (on the lead
+     * story only) people mentioned, capped at three names.
+     */
+    private static function articleChipsPdf(array $article, bool $withMentions): string
+    {
+        $chips = [];
+
+        $topic = trim((string)($article['topic'] ?? ''));
+        if ($topic !== '' && $topic !== 'other') {
+            $chips[] = '<span class="chip-ic chip-topic"><span class="chip-k">TOPIC</span> ' . htmlspecialchars(Topics::label($topic), ENT_QUOTES) . '</span>';
+        }
+
+        $sent = (string)($article['sentiment'] ?? '');
+        if (in_array($sent, ['positive', 'neutral', 'negative'], true)) {
+            $cls = ['positive' => 'chip-pos', 'neutral' => 'chip-neu', 'negative' => 'chip-neg'][$sent];
+            $chips[] = '<span class="chip-ic ' . $cls . '">' . ucfirst($sent) . '</span>';
+        }
+
+        $byline = trim(JournalistRepository::bylineForArticle((int)($article['id'] ?? 0)));
+        if ($byline !== '') {
+            $chips[] = '<span class="chip-ic"><span class="chip-k">BY</span> ' . htmlspecialchars(self::truncate($byline, 40), ENT_QUOTES) . '</span>';
+        }
+
+        if ($withMentions) {
+            $people = trim(PeopleRepository::peopleForArticle((int)($article['id'] ?? 0)));
+            if ($people !== '') {
+                $all = array_values(array_filter(array_map('trim', explode(',', $people)), fn($n) => $n !== ''));
+                $shown = array_slice($all, 0, 3);
+                $label = htmlspecialchars(implode(', ', $shown), ENT_QUOTES);
+                $extra = count($all) - count($shown);
+                if ($extra > 0) {
+                    $label .= ' +' . $extra;
+                }
+                $chips[] = '<span class="chip-ic"><span class="chip-k">MENTIONS</span> ' . $label . '</span>';
+            }
+        }
+
+        if ($chips === []) {
+            return '';
+        }
+        return '<div class="chips">' . implode(' ', $chips) . '</div>';
+    }
 
     /**
      * Resolve an article's image to an embeddable src: a base64 data URI from
