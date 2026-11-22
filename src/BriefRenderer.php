@@ -43,8 +43,16 @@ final class BriefRenderer
         $briefId = (int)($brief['id'] ?? 0);
 
         $html = '<div style="' . self::BODY_STYLE . ' max-width: 800px;">';
-        $html .= self::renderBanner($briefId);
-        $html .= self::renderHeader($date);
+        if (self::freshPdf()) {
+            // Freshened header, matching the PDF (rollback: BRIEF_FRESH_PDF=false).
+            $stats = self::briefStats($grouped);
+            $html .= self::mastheadHtml($date);
+            $html .= self::numbersStripHtml($stats);
+            $html .= self::sentimentBarHtml($stats);
+        } else {
+            $html .= self::renderBanner($briefId);
+            $html .= self::renderHeader($date);
+        }
         $html .= self::renderExecutiveSummary((string)($brief['executive_summary'] ?? ''));
         $html .= self::renderContents($grouped);
         $html .= self::renderSections($grouped);
@@ -263,6 +271,14 @@ final class BriefRenderer
                 . $moreHtml;
         } else {
             $inner = $kicker . $headlineHtml . $summaryHtml . $moreHtml;
+        }
+
+        // Freshened layout: LEAD pill on the hero, intelligence chips on every card.
+        if (self::freshPdf()) {
+            if ($mode === 'hero') {
+                $inner = '<div style="margin: 0 0 8px;"><span style="display: inline-block; font-family: ' . self::FONT_HEAD . '; font-size: 10px; font-weight: bold; color: #FFFFFF; background: ' . self::RED . '; padding: 3px 9px; letter-spacing: 1px;">LEAD</span></div>' . $inner;
+            }
+            $inner .= self::articleChipsHtml($article, $mode === 'hero');
         }
 
         // Subtle grey card. overflow:hidden makes the card a self-contained
@@ -714,8 +730,12 @@ final class BriefRenderer
     private static function mastheadPdf(string $date): string
     {
         $logo = self::logoDataUri();
+        // The marque sits on a white chip so a dark crest stays visible on navy.
         $logoCell = $logo !== ''
-            ? '<td class="mast-logo" width="52" valign="middle"><img src="' . $logo . '" style="width: 40pt; height: 40pt;"></td>'
+            ? '<td class="mast-logo" width="56" valign="middle">'
+              . '<table cellpadding="0" cellspacing="0" style="background-color: #FFFFFF; border-radius: 6pt;"><tr>'
+              . '<td style="padding: 4pt;"><img src="' . $logo . '" style="width: 34pt; height: 34pt;"></td>'
+              . '</tr></table></td>'
             : '';
         $midPad = $logo !== '' ? 'mast-mid' : 'mast-logo';
 
@@ -818,6 +838,122 @@ final class BriefRenderer
             return '';
         }
         return '<div class="chips">' . implode(' ', $chips) . '</div>';
+    }
+
+    // ---- HTML (preview + Outlook) variants of the freshened header/chips ----
+
+    private static function mastheadHtml(string $date): string
+    {
+        $logo = self::logoDataUri();
+        // White chip behind the marque so a dark crest shows on the navy bar.
+        $logoCell = $logo !== ''
+            ? '<td valign="middle" style="width: 64px; padding: 14px 0 14px 24px;">'
+              . '<table role="presentation" cellpadding="0" cellspacing="0" style="background: #FFFFFF; border-radius: 8px;"><tr>'
+              . '<td style="padding: 5px;"><img src="' . $logo . '" width="38" height="38" style="width: 38px; height: 38px; display: block;"></td>'
+              . '</tr></table></td>'
+            : '';
+        $midPadLeft = $logo !== '' ? '12px' : '24px';
+
+        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: ' . self::NAVY . '; border-bottom: 3px solid ' . self::RED . ';"><tr>'
+            . $logoCell
+            . '<td valign="middle" style="padding: 14px 0 14px ' . $midPadLeft . ';">'
+            . '<div style="font-family: ' . self::FONT_HEAD . '; font-size: 20px; font-weight: bold; color: #FFFFFF; line-height: 1.1;">Bolton Wanderers <span style="color: #B9C0D0; font-weight: normal;">Media Brief</span></div>'
+            . '<div style="font-size: 9px; letter-spacing: 1.5px; color: #9AA3B5; margin-top: 4px;">COMMUNICATIONS &amp; MEDIA INTELLIGENCE</div></td>'
+            . '<td valign="middle" align="right" style="padding: 14px 24px 14px 0; text-align: right;">'
+            . '<div style="font-family: ' . self::FONT_HEAD . '; font-size: 13px; font-weight: bold; color: #FFFFFF;">' . htmlspecialchars($date, ENT_QUOTES) . '</div>'
+            . '<div style="font-size: 10px; color: #9AA3B5; margin-top: 2px;">Morning edition</div></td>'
+            . '</tr></table>';
+    }
+
+    /** @param array{articles:int,outlets:int,local:int,national:int,positive:int,neutral:int,negative:int} $s */
+    private static function numbersStripHtml(array $s): string
+    {
+        $n = fn(int $v) => '<span style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 14px; color: #FFFFFF;">' . $v . '</span>';
+        $l = fn(string $t) => '<span style="font-size: 9px; letter-spacing: 0.5px; color: #9AA3B5;">' . $t . '</span>';
+        $face = function (string $sent, int $num): string {
+            $uri = self::sentimentFace($sent);
+            $img = $uri !== '' ? '<img src="' . $uri . '" width="13" height="13" style="vertical-align: middle;"> ' : '';
+            return $img . '<span style="font-family: ' . self::FONT_HEAD . '; font-weight: bold; font-size: 13px; color: #FFFFFF;">' . $num . '</span>';
+        };
+
+        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #0F1730;"><tr>'
+            . '<td style="padding: 9px 24px;">' . $n($s['articles']) . ' ' . $l('ARTICLES') . '</td>'
+            . '<td style="padding: 9px 12px;">' . $n($s['outlets']) . ' ' . $l('OUTLETS') . '</td>'
+            . '<td style="padding: 9px 12px;">' . $n($s['local']) . ' ' . $l('LOCAL') . ' &nbsp; ' . $n($s['national']) . ' ' . $l('NAT&rsquo;L') . '</td>'
+            . '<td align="right" style="padding: 9px 24px; text-align: right;">' . $l('SENTIMENT') . ' &nbsp; '
+            . $face('positive', $s['positive']) . ' &nbsp; ' . $face('neutral', $s['neutral']) . ' &nbsp; ' . $face('negative', $s['negative']) . '</td>'
+            . '</tr></table>';
+    }
+
+    /** @param array{positive:int,neutral:int,negative:int} $s */
+    private static function sentimentBarHtml(array $s): string
+    {
+        $total = $s['positive'] + $s['neutral'] + $s['negative'];
+        if ($total === 0) {
+            return '';
+        }
+        $pp = (int)round($s['positive'] / $total * 100);
+        $pn = (int)round($s['neutral'] / $total * 100);
+        $pg = 100 - $pp - $pn;
+        if ($pg < 0) { $pg = 0; }
+        $seg = fn(int $w, string $c) => $w > 0 ? '<td width="' . $w . '%" style="background: ' . $c . '; font-size: 1px; line-height: 11px;">&nbsp;</td>' : '';
+
+        return '<div style="margin: 16px 24px 0;">'
+            . '<div style="font-size: 9px; letter-spacing: 1px; color: #8A8F99; margin-bottom: 5px;">TODAY&rsquo;S COVERAGE TONE</div>'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 6px; overflow: hidden;"><tr>'
+            . $seg($pp, '#2E8B57') . $seg($pn, '#999999') . $seg($pg, '#C0392B')
+            . '</tr></table>'
+            . '<div style="font-size: 11px; color: #6A6A6A; margin-top: 6px;">'
+            . '<span style="color: #2E8B57;">&#9679;</span> ' . $pp . '% positive &nbsp;&nbsp; '
+            . '<span style="color: #999999;">&#9679;</span> ' . $pn . '% neutral &nbsp;&nbsp; '
+            . '<span style="color: #C0392B;">&#9679;</span> ' . $pg . '% negative</div>'
+            . '</div>';
+    }
+
+    private static function articleChipsHtml(array $article, bool $withMentions): string
+    {
+        $base = 'display: inline-block; font-size: 11px; color: #3A3F49; background: #FFFFFF; border: 1px solid #DFE2E8; border-radius: 12px; padding: 3px 9px; margin: 0 5px 5px 0;';
+        $k = 'color: #8A8F99; font-size: 9px; letter-spacing: 0.4px;';
+        $chips = [];
+
+        $topic = trim((string)($article['topic'] ?? ''));
+        if ($topic !== '' && $topic !== 'other') {
+            $chips[] = '<span style="' . $base . ' background: #EEF3FB; border-color: #CDD8EA; color: ' . self::BLUE . ';"><span style="' . $k . '">TOPIC</span> ' . htmlspecialchars(Topics::label($topic), ENT_QUOTES) . '</span>';
+        }
+
+        $sent = (string)($article['sentiment'] ?? '');
+        if (in_array($sent, ['positive', 'neutral', 'negative'], true)) {
+            $sc = [
+                'positive' => 'background: #EAFAEF; border-color: #BFE3CB; color: #1E5D2C;',
+                'neutral'  => 'background: #F3F3F3; border-color: #E0E0E0; color: #555555;',
+                'negative' => 'background: #FDEEEE; border-color: #F2C9C9; color: #8C1A1A;',
+            ][$sent];
+            $chips[] = '<span style="' . $base . ' ' . $sc . '">' . ucfirst($sent) . '</span>';
+        }
+
+        $byline = trim(JournalistRepository::bylineForArticle((int)($article['id'] ?? 0)));
+        if ($byline !== '') {
+            $chips[] = '<span style="' . $base . '"><span style="' . $k . '">BY</span> ' . htmlspecialchars(self::truncate($byline, 40), ENT_QUOTES) . '</span>';
+        }
+
+        if ($withMentions) {
+            $people = trim(PeopleRepository::peopleForArticle((int)($article['id'] ?? 0)));
+            if ($people !== '') {
+                $all = array_values(array_filter(array_map('trim', explode(',', $people)), fn($x) => $x !== ''));
+                $shown = array_slice($all, 0, 3);
+                $label = htmlspecialchars(implode(', ', $shown), ENT_QUOTES);
+                $extra = count($all) - count($shown);
+                if ($extra > 0) {
+                    $label .= ' +' . $extra;
+                }
+                $chips[] = '<span style="' . $base . '"><span style="' . $k . '">MENTIONS</span> ' . $label . '</span>';
+            }
+        }
+
+        if ($chips === []) {
+            return '';
+        }
+        return '<div style="margin-top: 10px;">' . implode('', $chips) . '</div>';
     }
 
     /**
