@@ -1,0 +1,14 @@
+# Treat binary assets as binary so Windows checkouts never apply EOL
+# conversion and corrupt them (which breaks embedded images, fonts, PDFs).
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.ttf  binary
+*.otf  binary
+*.woff  binary
+*.woff2 binary
+*.pdf  binary
+*.zip  binary

@@ -665,18 +665,91 @@ final class BriefRenderer
         return (bool) env('BRIEF_FRESH_PDF', true);
     }
 
-    /** The BWFC marque as a base64 data URI, for the masthead. '' if missing. */
+    /**
+     * The BWFC marque as a base64 PNG data URI for the masthead. Serves a small,
+     * GD-re-encoded copy (tiny payload + guaranteed-valid PNG), falling back to
+     * the source file. Returns '' if the marque is missing, empty or not a valid
+     * PNG — callers then draw the SVG crest instead of a broken image.
+     */
     private static function logoDataUri(): string
     {
-        $path = BASE_PATH . '/public/img/bwfc-marque.png';
-        if (!is_file($path)) {
+        $src = BASE_PATH . '/public/img/bwfc-marque.png';
+        if (!is_file($src) || filesize($src) < 8) {
             return '';
         }
-        $data = @file_get_contents($path);
-        if ($data === false) {
+
+        // Re-encode to a small cached copy so the data URI is light and valid.
+        $cacheDir = PUBLIC_PATH . '/img/cache';
+        $cache = $cacheDir . '/masthead-logo.png';
+        if (!is_file($cache) || @filemtime($cache) < @filemtime($src)) {
+            self::buildLogoCache($src, $cache, $cacheDir);
+        }
+        $use = is_file($cache) && filesize($cache) > 8 ? $cache : $src;
+
+        $data = @file_get_contents($use);
+        // Reject empty/corrupt files (a 0-byte checkout would otherwise emit
+        // "data:image/png;base64," and render as a broken image).
+        if ($data === false || strlen($data) < 8 || substr($data, 0, 8) !== "\x89PNG\r\n\x1a\n") {
             return '';
         }
         return 'data:image/png;base64,' . base64_encode($data);
+    }
+
+    /** Best-effort: write a ~120px, alpha-preserving copy of the marque to cache. */
+    private static function buildLogoCache(string $src, string $cache, string $cacheDir): void
+    {
+        if (!function_exists('imagecreatefrompng')) {
+            return;
+        }
+        try {
+            $im = @imagecreatefrompng($src);
+            if ($im === false) {
+                return;
+            }
+            $w = imagesx($im);
+            $h = imagesy($im);
+            if ($w < 1 || $h < 1) { imagedestroy($im); return; }
+
+            $target = 120;
+            $nw = $w >= $h ? $target : (int)max(1, round($target * $w / $h));
+            $nh = $h >  $w ? $target : (int)max(1, round($target * $h / $w));
+
+            $out = imagecreatetruecolor($nw, $nh);
+            imagealphablending($out, false);
+            imagesavealpha($out, true);
+            $transparent = imagecolorallocatealpha($out, 0, 0, 0, 127);
+            imagefilledrectangle($out, 0, 0, $nw, $nh, $transparent);
+            imagecopyresampled($out, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
+
+            if (!is_dir($cacheDir)) {
+                @mkdir($cacheDir, 0755, true);
+            }
+            @imagepng($out, $cache, 6);
+            imagedestroy($im);
+            imagedestroy($out);
+        } catch (\Throwable $e) {
+            // Fall back to the source file.
+        }
+    }
+
+    /** A clean inline-SVG BWFC crest, used when the marque PNG isn't usable. */
+    private static function crestSvg(int $size): string
+    {
+        return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">'
+            . '<path d="M15 2 L26 6 V15 C26 23 20 27 15 28 C10 27 4 23 4 15 V6 Z" fill="' . self::NAVY . '"/>'
+            . '<path d="M15 5 L23 8 V15 C23 21 18.5 24.3 15 25.2 C11.5 24.3 7 21 7 15 V8 Z" fill="#FFFFFF"/>'
+            . '<path d="M15 8 L20 10 V15 C20 19 17 21 15 21.6 C13 21 10 19 10 15 V10 Z" fill="' . self::RED . '"/>'
+            . '</svg>';
+    }
+
+    /** Masthead mark as a data-URI <img> (real marque, else SVG crest), sized in the given unit. */
+    private static function mastheadMarkImg(float $size, string $unit): string
+    {
+        $logo = self::logoDataUri();
+        $src = $logo !== ''
+            ? $logo
+            : 'data:image/svg+xml;base64,' . base64_encode(self::crestSvg(40));
+        return '<img src="' . $src . '" style="width: ' . $size . $unit . '; height: ' . $size . $unit . ';">';
     }
 
     private static function isLocalOutlet(string $outlet): bool
@@ -729,15 +802,13 @@ final class BriefRenderer
 
     private static function mastheadPdf(string $date): string
     {
-        $logo = self::logoDataUri();
         // The marque sits on a white chip so a dark crest stays visible on navy.
-        $logoCell = $logo !== ''
-            ? '<td class="mast-logo" width="56" valign="middle">'
-              . '<table cellpadding="0" cellspacing="0" style="background-color: #FFFFFF; border-radius: 6pt;"><tr>'
-              . '<td style="padding: 4pt;"><img src="' . $logo . '" style="width: 34pt; height: 34pt;"></td>'
-              . '</tr></table></td>'
-            : '';
-        $midPad = $logo !== '' ? 'mast-mid' : 'mast-logo';
+        // mastheadMarkImg() always returns a valid image (real marque or SVG crest).
+        $logoCell = '<td class="mast-logo" width="56" valign="middle">'
+            . '<table cellpadding="0" cellspacing="0" style="background-color: #FFFFFF; border-radius: 6pt;"><tr>'
+            . '<td style="padding: 4pt;">' . self::mastheadMarkImg(34, 'pt') . '</td>'
+            . '</tr></table></td>';
+        $midPad = 'mast-mid';
 
         return '<table class="mast" style="width: 100%; background-color: ' . self::NAVY . ';"><tr>'
             . $logoCell
@@ -844,15 +915,13 @@ final class BriefRenderer
 
     private static function mastheadHtml(string $date): string
     {
-        $logo = self::logoDataUri();
         // White chip behind the marque so a dark crest shows on the navy bar.
-        $logoCell = $logo !== ''
-            ? '<td valign="middle" style="width: 64px; padding: 14px 0 14px 24px;">'
-              . '<table role="presentation" cellpadding="0" cellspacing="0" style="background: #FFFFFF; border-radius: 8px;"><tr>'
-              . '<td style="padding: 5px;"><img src="' . $logo . '" width="38" height="38" style="width: 38px; height: 38px; display: block;"></td>'
-              . '</tr></table></td>'
-            : '';
-        $midPadLeft = $logo !== '' ? '12px' : '24px';
+        // mastheadMarkImg() always returns a valid image (real marque or SVG crest).
+        $logoCell = '<td valign="middle" style="width: 64px; padding: 14px 0 14px 24px;">'
+            . '<table role="presentation" cellpadding="0" cellspacing="0" style="background: #FFFFFF; border-radius: 8px;"><tr>'
+            . '<td style="padding: 5px;">' . self::mastheadMarkImg(38, 'px') . '</td>'
+            . '</tr></table></td>';
+        $midPadLeft = '12px';
 
         return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: ' . self::NAVY . '; border-bottom: 3px solid ' . self::RED . ';"><tr>'
             . $logoCell
