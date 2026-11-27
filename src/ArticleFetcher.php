@@ -93,13 +93,13 @@ final class ArticleFetcher
         $timeout = max(20, (int)env('FETCH_TIMEOUT', 25));
 
         $ch = curl_init($url);
-        curl_setopt_array($ch, [
+        $opts = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 5,
             // Separate connect vs. total timeout: a dead host fails fast, while a
             // slow-but-responsive site gets the full window to finish downloading.
-            CURLOPT_CONNECTTIMEOUT => (int)env('FETCH_CONNECT_TIMEOUT', 10),
+            CURLOPT_CONNECTTIMEOUT => max(10, (int)env('FETCH_CONNECT_TIMEOUT', 15)),
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_ENCODING => '', // accept gzip/deflate so big pages transfer faster
             CURLOPT_USERAGENT => $ua,
@@ -108,15 +108,33 @@ final class ArticleFetcher
                 'Accept-Language: en-GB,en;q=0.9',
             ],
             CURLOPT_SSL_VERIFYPEER => false, // XAMPP often lacks CA bundle
-        ]);
+            CURLOPT_SSL_VERIFYHOST => 0,
+            // Force a modern TLS floor and HTTP/1.1 — avoids handshakes stalling
+            // on servers with flaky HTTP/2 or old TLS negotiation.
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+        ];
+        if (defined('CURL_SSLVERSION_TLSv1_2')) {
+            $opts[CURLOPT_SSLVERSION] = CURL_SSLVERSION_TLSv1_2;
+        }
+        // Force IPv4. The #1 cause of blanket "SSL connection timeout" on a
+        // Windows/work server is the box trying news sites over IPv6 with no
+        // working IPv6 route: the TLS handshake stalls until it times out, while
+        // IPv4-only hosts (e.g. the Anthropic API) keep working. Toggle off with
+        // FETCH_FORCE_IPV4=false if a host is genuinely IPv6-only.
+        if (env('FETCH_FORCE_IPV4', true) !== false && defined('CURL_IPRESOLVE_V4')) {
+            $opts[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        }
+        curl_setopt_array($ch, $opts);
 
         $body = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err = curl_error($ch);
+        $errno = curl_errno($ch);
         curl_close($ch);
 
         if ($body === false) {
-            throw new RuntimeException('Fetch failed: ' . $err);
+            $detail = $err !== '' ? $err : 'no response';
+            throw new RuntimeException('Fetch failed: ' . $detail . ' (curl ' . $errno . ')');
         }
 
         if ($code >= 400) {
