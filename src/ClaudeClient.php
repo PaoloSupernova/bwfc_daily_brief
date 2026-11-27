@@ -202,11 +202,15 @@ final class ClaudeClient
             $handles[$key] = $ch;
         }
 
-        // Drive all transfers to completion.
+        // Drive all transfers to completion. curl_multi_select returns -1 on
+        // some platforms (notably Windows) when there is nothing to wait on; a
+        // short sleep then avoids a CPU busy-loop.
         do {
             $status = curl_multi_exec($mh, $running);
             if ($running) {
-                curl_multi_select($mh, 1.0);
+                if (curl_multi_select($mh, 1.0) === -1) {
+                    usleep(50000); // 50ms
+                }
             }
         } while ($running && $status === CURLM_OK);
 
