@@ -124,6 +124,21 @@ final class ArticleFetcher
         if (env('FETCH_FORCE_IPV4', true) !== false && defined('CURL_IPRESOLVE_V4')) {
             $opts[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
         }
+
+        // Outbound proxy: on a locked-down work network, direct outbound HTTPS to
+        // news sites is often blocked and must go through the corporate proxy.
+        // Set FETCH_PROXY (e.g. "http://proxy.company.local:8080") — and
+        // FETCH_PROXY_AUTH ("user:pass") if it needs credentials — to route
+        // article fetches through it. Left blank, fetches go direct as before.
+        $proxy = trim((string)env('FETCH_PROXY', ''));
+        if ($proxy !== '') {
+            $opts[CURLOPT_PROXY] = $proxy;
+            $proxyAuth = trim((string)env('FETCH_PROXY_AUTH', ''));
+            if ($proxyAuth !== '') {
+                $opts[CURLOPT_PROXYUSERPWD] = $proxyAuth;
+            }
+        }
+
         curl_setopt_array($ch, $opts);
 
         $body = curl_exec($ch);
